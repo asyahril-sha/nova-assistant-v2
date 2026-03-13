@@ -849,7 +849,50 @@ class DeepSecretsSystem:
 
 class EternalDatabase:
     """Database yang menyimpan SEMUA hubungan dan kenangan selamanya"""
-    
+        def get_relationship_by_id(self, relationship_id: int) -> Optional[Dict]:
+        """Dapatkan detail hubungan berdasarkan ID"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT r.id, r.relationship_name, r.bot_role, r.bot_name, r.bot_age, 
+                   r.bot_identity_json, r.status, r.start_date, r.end_date,
+                   rs.attachment_level, rs.trust_level, rs.desire_level, 
+                   rs.intimacy_stage, rs.total_interactions,
+                   rs.current_mood, rs.jealousy_level, rs.in_conflict,
+                   rs.conflict_level, rs.awaiting_apology, rs.conflict_count
+            FROM relationships r
+            LEFT JOIN relationship_status rs ON r.id = rs.relationship_id
+            WHERE r.id = ?
+        """, (relationship_id,))
+        
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return {
+                "relationship_id": row[0],
+                "relationship_name": row[1],
+                "bot_role": row[2],
+                "bot_name": row[3],
+                "bot_age": row[4],
+                "bot_identity": json.loads(row[5]) if row[5] else {},
+                "status": row[6],
+                "start_date": row[7],
+                "end_date": row[8],
+                "attachment_level": row[9] or 0,
+                "trust_level": row[10] or 0.1,
+                "desire_level": row[11] or 0,
+                "intimacy_stage": row[12] or "stranger",
+                "total_interactions": row[13] or 0,
+                "current_mood": row[14] or "ceria",
+                "jealousy_level": row[15] or 0,
+                "in_conflict": bool(row[16]) if row[16] is not None else False,
+                "conflict_level": row[17] or 0,
+                "awaiting_apology": bool(row[18]) if row[18] is not None else False,
+                "conflict_count": row[19] or 0
+            }
+        return None
     def __init__(self, db_path):
         self.db_path = db_path
         self._init_db()
