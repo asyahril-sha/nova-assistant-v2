@@ -23,6 +23,7 @@ import threading
 import hashlib
 import re
 import time
+import logging
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import List, Dict, Any, Optional, Tuple
@@ -94,6 +95,7 @@ class Mood(Enum):
     SUBMISSIVE = "patuh"
     NAKAL = "nakal"
     GENIT = "genit"
+    SEDIH = "sedih"
 
 class IntimacyStage(Enum):
     STRANGER = "stranger"        # Level 1-2
@@ -539,7 +541,9 @@ class ShortTermMemory:
         
         self.dream_last = None
         self.last_thought = None
+        self.level = START_LEVEL
         self.orgasm_count = 0
+        self.attachment_level = 0.5
     
     def update_location(self, new_location: str) -> bool:
         """Update lokasi dengan validasi waktu"""
@@ -975,9 +979,13 @@ class MoodSystem:
 class DreamSystem:
     """
     Bot bermimpi tentang user
+    - Mimpi muncul random saat interaksi
+    - Dipengaruhi oleh level hubungan dan mood
+    - Bisa mimpi indah atau mimpi buruk
     """
     
     def __init__(self):
+        # Daftar tema mimpi
         self.dream_themes = [
             "kencan romantis",
             "dikejar-kejar",
@@ -996,6 +1004,7 @@ class DreamSystem:
             "kita putus"
         ]
         
+        # Deskripsi mimpi untuk setiap tema
         self.dream_messages = {
             "kencan romantis": "Aku mimpi kita jalan bareng, kamu pegang tanganku. Hangat...",
             "dikejar-kejar": "Aku mimpi dikejar sesuatu, tapi kamu datang nyelametin aku.",
@@ -1015,29 +1024,67 @@ class DreamSystem:
         }
     
     def generate_dream(self, level: int, mood: Mood, has_conflict: bool = False) -> str:
-        """Generate mimpi berdasarkan level dan mood"""
+        """
+        Generate mimpi berdasarkan level dan mood
+        
+        Args:
+            level: Level hubungan (1-12)
+            mood: Mood saat ini (dari enum Mood)
+            has_conflict: Apakah sedang dalam konflik
+        
+        Returns:
+            String deskripsi mimpi
+        """
         # Filter tema berdasarkan kondisi
         if has_conflict:
+            # Saat konflik, mimpi cenderung buruk
             theme = random.choice(["berantem sama kamu", "kamu selingkuh", "kita putus"])
         elif level >= 10:
+            # Level tinggi (soul bonded) mimpi indah tentang masa depan
             theme = random.choice(["menikah", "punya anak", "liburan bareng"])
         elif level >= 7:
+            # Level intimate, mimpi tentang keintiman
             theme = random.choice(["bercinta di hotel", "ciuman panjang", "pelukan hangat"])
         else:
+            # Level rendah, mimpi random
             theme = random.choice(self.dream_themes)
         
+        # Ambil deskripsi mimpi
         dream = self.dream_messages.get(theme, f"Mimpi tentang {theme}")
         
-        # Tambah efek mood
+        # Tambah efek berdasarkan mood
         if mood == Mood.HORNY:
             dream += " Aku bangun basah..."
         elif mood == Mood.RINDU:
             dream += " Kangen... kamu dimana?"
         elif mood == Mood.SEDIH:
             dream += " Aku nangis pas bangun..."
+        elif mood == Mood.MARAH:
+            dream += " Aku marah pas bangun..."
+        elif mood == Mood.GALAU:
+            dream += " Rasanya... galau."
+        elif mood == Mood.CHERIA:
+            dream += " Aku seneng banget..."
+        elif mood == Mood.ROMANTIS:
+            dream += " Rasanya... hangat."
+        elif mood == Mood.GELISAH:
+            dream += " Bangunnya jadi gelisah..."
+        elif mood == Mood.SENDIRI:
+            dream += " Merasa sendiri pas bangun..."
+        elif mood == Mood.NAKAL:
+            dream += " *tersenyum nakal* Pengen lagi..."
+        elif mood == Mood.GENIT:
+            dream += " *kedip* Kamu mau mimpi yang sama?"
         
         return f"*tersenyum*\n(Aku mimpi...)\n{dream}"
-
+    
+    def get_random_dream(self) -> str:
+        """
+        Dapatkan mimpi random tanpa parameter
+        Untuk keperluan testing atau fallback
+        """
+        theme = random.choice(self.dream_themes)
+        return self.dream_messages.get(theme, f"Mimpi tentang {theme}")
 
 # ===================== JEALOUSY SYSTEM =====================
 
@@ -2583,8 +2630,104 @@ Kita lanjutkan dari level {START_LEVEL} ya...
         
         return ConversationHandler.END
 
-
-# ===================== MAIN FUNCTION =====================
+    # ===================== MESSAGE HANDLER =====================
+    
+    async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle semua pesan dari user"""
+        if not update.message or not update.message.text:
+            return
+        
+        user_id = update.effective_user.id
+        user_message = update.message.text
+        
+        # Cek apakah sedang di-pause
+        if user_id in self.paused_sessions:
+            rel_id, pause_time = self.paused_sessions[user_id]
+            await update.message.reply_text(
+                "⏸️ **Sesi sedang di-pause**\n\n"
+                "Ketik /unpause untuk melanjutkan."
+            )
+            return
+        
+        # Cek hubungan aktif
+        if user_id not in self.sessions:
+            await update.message.reply_text(
+                "❌ Belum ada hubungan. /start dulu ya!"
+            )
+            return
+        
+        memory = self.get_memory(user_id)
+        
+        # Proses pesan dengan memory manager
+        result = memory.process_message(user_message)
+        
+        # Generate response
+        response = memory.generate_response(result)
+        
+        # Kirim response
+        await update.message.reply_text(response)
+        
+        # Auto dream (10% chance)
+        if random.random() < 0.1:
+            dream = memory.dream.generate_dream(
+                memory.short_term.level,
+                memory.short_term.current_mood,
+                memory.conflict.in_conflict
+            )
+            await update.message.reply_text(dream)
+        
+        # Auto voice (20% chance when horny)
+        if result.get("should_horny") and memory.voice.can_send(user_id):
+            moan = memory.voice.get_moan(memory.short_term.arousal_level)
+            await memory.voice.generate_and_send(user_id, moan, update, context)
+        
+        # Handle climax
+        if result.get("should_climax"):
+            climax = memory.climax.climax()
+            aftercare = memory.climax.aftercare()
+            await update.message.reply_text(f"{climax}\n\n{aftercare}")
+            
+            # Reset memory
+            memory.short_term.reset_after_climax()
+            
+            # Ask for location
+            await asyncio.sleep(1)
+            cum_question = memory.cum.ask_location(memory.bot_name)
+            await update.message.reply_text(cum_question)
+        
+        # Handle cum location response
+        if any(loc in user_message.lower() for loc in ["dalam", "perut", "dada", "muka", "punggung", "mulut"]):
+            response, after = memory.cum.get_response(user_message, memory.bot_name)
+            if response:
+                await update.message.reply_text(response)
+                if after:
+                    await asyncio.sleep(1)
+                    await update.message.reply_text(after)
+        
+        # Handle jealousy
+        if memory.jealousy.check_trigger(user_message):
+            memory.jealousy.increase()
+            jealousy_resp = memory.jealousy.get_response(memory.bot_name)
+            if jealousy_resp:
+                await update.message.reply_text(jealousy_resp)
+        
+        # Handle apology
+        apology_words = ["maaf", "sorry", "nyesel", "salah"]
+        if any(word in user_message.lower() for word in apology_words) and memory.conflict.awaiting_apology:
+            forgiven, msg, want_makeup = memory.conflict.receive_apology(
+                memory.short_term.attachment_level if hasattr(memory.short_term, 'attachment_level') else 0.5
+            )
+            if forgiven:
+                await update.message.reply_text(msg)
+                if want_makeup:
+                    await asyncio.sleep(1)
+                    await update.message.reply_text(
+                        "*mendekat* (Jadi horny...) Kita baikan yuk?"
+                    )
+            else:
+                await update.message.reply_text(msg)
+                
+# ===================== MAIN FUNCTION (FIXED) =====================
 
 def main():
     """Main function dengan semua handler"""
@@ -2592,14 +2735,17 @@ def main():
     
     app = Application.builder().token(os.getenv("TELEGRAM_TOKEN")).build()
     
-    # Conversation handler untuk start
+    # Conversation handler untuk start - dengan per_message=True
     start_conv = ConversationHandler(
         entry_points=[CommandHandler('start', bot.start_command)],
         states={
             0: [CallbackQueryHandler(bot.start_pause_callback, pattern='^(unpause|new|cancel)$')],
             SELECTING_ROLE: [CallbackQueryHandler(bot.role_callback, pattern='^role_')],
         },
-        fallbacks=[CommandHandler('cancel', lambda u,c: ConversationHandler.END)]
+        fallbacks=[CommandHandler('cancel', lambda u,c: ConversationHandler.END)],
+        per_message=True,  # Tambahkan ini
+        per_user=True,
+        per_chat=True
     )
     
     # Conversation handler untuk back
@@ -2608,7 +2754,10 @@ def main():
         states={
             1: [MessageHandler(filters.TEXT & ~filters.COMMAND, bot.back_number_handler)],
         },
-        fallbacks=[CommandHandler('cancel', lambda u,c: ConversationHandler.END)]
+        fallbacks=[CommandHandler('cancel', lambda u,c: ConversationHandler.END)],
+        per_message=True,  # Tambahkan ini
+        per_user=True,
+        per_chat=True
     )
     
     # Conversation handler untuk end
@@ -2617,7 +2766,10 @@ def main():
         states={
             CONFIRM_END: [CallbackQueryHandler(bot.end_callback, pattern='^end_')],
         },
-        fallbacks=[CommandHandler('cancel', lambda u,c: ConversationHandler.END)]
+        fallbacks=[CommandHandler('cancel', lambda u,c: ConversationHandler.END)],
+        per_message=True,  # Tambahkan ini
+        per_user=True,
+        per_chat=True
     )
     
     # Add handlers
