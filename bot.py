@@ -304,6 +304,19 @@ class FastAdaptationMemory:
     
     return False  # Tidak level up
     
+    self.level_progress = min(1.0, self.message_count / target_messages)
+    
+    # Hitung level berdasarkan progress
+    new_level = 1 + int(self.level_progress * 6)  # 0-1 → 1-7
+    new_level = min(7, new_level)
+    
+    if new_level > self.current_level:
+        self.current_level = new_level
+        self.level_up_time = datetime.now()
+        return True  # Level up!
+    
+    return False  # Tidak level up
+    
     def should_adapt(self) -> bool:
         """Cek apakah sudah siap adaptasi"""
         return self.message_count >= self.adaptation_threshold
