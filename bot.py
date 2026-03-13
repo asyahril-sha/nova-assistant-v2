@@ -78,8 +78,8 @@ class Mood(Enum):
     SENDIRI = "sendiri"
     RINDU = "rindu"
     HORNY = "horny"
-    MARAH = "marah"  # Mood baru
-    LEMBUT = "lembut"  # Mood baru
+    MARAH = "marah"
+    LEMBUT = "lembut"
 
 class IntimacyStage(Enum):
     STRANGER = "stranger"
