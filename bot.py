@@ -287,22 +287,17 @@ class FastAdaptationMemory:
         }
     
     def _update_level_progress(self):
-    """Update progress level berdasarkan jumlah pesan"""
-    # Target: Level 7 dalam 30 menit (~30 pesan)
-    target_messages = 30  # 30 pesan = level 7
-    
+    """Update progress level"""
+    target_messages = 30
     self.level_progress = min(1.0, self.message_count / target_messages)
-    
-    # Hitung level berdasarkan progress
-    new_level = 1 + int(self.level_progress * 6)  # 0-1 → 1-7
+    new_level = 1 + int(self.level_progress * 6)
     new_level = min(7, new_level)
     
     if new_level > self.current_level:
         self.current_level = new_level
         self.level_up_time = datetime.now()
-        return True  # Level up!
-    
-    return False  # Tidak level up
+        return True
+    return False
     
     self.level_progress = min(1.0, self.message_count / target_messages)
     
