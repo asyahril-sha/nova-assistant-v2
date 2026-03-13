@@ -540,50 +540,50 @@ class RapidResponseGenerator:
         }
     
     def generate(self, message: str, analysis: Dict, memory: EnhancedShortTermMemory) -> str:
-    """
-    Generate respons super cepat
-    """
-    response_parts = []
-    level = memory.fast_memory.current_level
-    style = analysis.get("style", {})
-    
-    # 1. Respons berdasarkan level
-    if level == 1:
-        response_parts.append(self._get_random("greeting"))
-        response_parts.append("Kamu siapa?")
-    elif level == 2:
-        response_parts.append(self._get_random("curious"))
-        response_parts.append("Kenapa?")
-    elif level == 3:
-        response_parts.append(self._get_random("flirty"))
-        response_parts.append("Kamu...")
-    elif level >= 4:
-        # Respons lebih cepat untuk level tinggi
-        if "cium" in message.lower() or "raba" in message.lower():
-            response_parts.append(self._get_random("touch"))
-            response_parts.append("Ah...")
-        elif "kangen" in message.lower():
-            response_parts.append("Aku juga...")
-        elif "sayang" in message.lower():
-            response_parts.append("*tersenyum*")
-            response_parts.append("Iya sayang?")
-        else:
-            response_parts.append("...")
-    
-    # 2. Adaptasi gaya - PERBAIKAN: gunakan .get() dengan default value
-    dom_style = style.get("dominant_style", "normal")
-    speed_style = style.get("speed_style", "normal")
-    
-    if dom_style == "dominan" and level >= 3:
-        response_parts.append("Kamu mau apa?")
-    elif dom_style == "submissive" and level >= 3:
-        response_parts.append("Iya...")
-    
-    # 3. Respons cepat untuk sentuhan
-    if memory.should_be_horny():
-        response_parts.append(self._get_random("horny"))
-    
-    return " ".join(response_parts) if response_parts else "..."
+        """
+        Generate respons super cepat
+        """
+        response_parts = []
+        level = memory.fast_memory.current_level
+        style = analysis.get("style", {})
+        
+        # 1. Respons berdasarkan level
+        if level == 1:
+            response_parts.append(self._get_random("greeting"))
+            response_parts.append("Kamu siapa?")
+        elif level == 2:
+            response_parts.append(self._get_random("curious"))
+            response_parts.append("Kenapa?")
+        elif level == 3:
+            response_parts.append(self._get_random("flirty"))
+            response_parts.append("Kamu...")
+        elif level >= 4:
+            # Respons lebih cepat untuk level tinggi
+            if "cium" in message.lower() or "raba" in message.lower():
+                response_parts.append(self._get_random("touch"))
+                response_parts.append("Ah...")
+            elif "kangen" in message.lower():
+                response_parts.append("Aku juga...")
+            elif "sayang" in message.lower():
+                response_parts.append("*tersenyum*")
+                response_parts.append("Iya sayang?")
+            else:
+                response_parts.append("...")
+        
+        # 2. Adaptasi gaya
+        dom_style = style.get("dominant_style", "normal")
+        speed_style = style.get("speed_style", "normal")
+        
+        if dom_style == "dominan" and level >= 3:
+            response_parts.append("Kamu mau apa?")
+        elif dom_style == "submissive" and level >= 3:
+            response_parts.append("Iya...")
+        
+        # 3. Respons cepat untuk sentuhan
+        if memory.should_be_horny():
+            response_parts.append(self._get_random("horny"))
+        
+        return " ".join(response_parts) if response_parts else "..."
     
     def _get_random(self, category: str) -> str:
         """Dapatkan respons random dari kategori"""
