@@ -241,8 +241,8 @@ class FastAdaptationMemory:
         self.user_preferences = UserPreferenceAnalyzer()
         
         # Fast learning parameters
-        self.learning_rate = 0.3  # Cepat belajar
-        self.adaptation_threshold = 5  # Setelah 5 pesan mulai adaptasi
+        self.learning_rate = 0.3
+        self.adaptation_threshold = 5
         
         # Response cache untuk kecepatan
         self.response_cache = {}
@@ -287,35 +287,22 @@ class FastAdaptationMemory:
         }
     
     def _update_level_progress(self):
-    """Update progress level berdasarkan jumlah pesan"""  # ← 4 SPASI di depan
-    # Target: Level 7 dalam 30 menit (~30 pesan)
-    target_messages = 30  # ← 4 SPASI di depan
-    
-    self.level_progress = min(1.0, self.message_count / target_messages)  # ← 4 SPASI
-    
-    # Hitung level berdasarkan progress
-    new_level = 1 + int(self.level_progress * 6)  # 0-1 → 1-7  # ← 4 SPASI
-    new_level = min(7, new_level)  # ← 4 SPASI
-    
-    if new_level > self.current_level:  # ← 4 SPASI
-        self.current_level = new_level  # ← 8 SPASI
-        self.level_up_time = datetime.now()  # ← 8 SPASI
-        return True  # ← 8 SPASI
-    
-    return False  # ← 4 SPASI
-    
-    self.level_progress = min(1.0, self.message_count / target_messages)
-    
-    # Hitung level berdasarkan progress
-    new_level = 1 + int(self.level_progress * 6)  # 0-1 → 1-7
-    new_level = min(7, new_level)
-    
-    if new_level > self.current_level:
-        self.current_level = new_level
-        self.level_up_time = datetime.now()
-        return True  # Level up!
-    
-    return False  # Tidak level up
+        """Update progress level berdasarkan jumlah pesan"""
+        # Target: Level 7 dalam 30 menit (~30 pesan)
+        target_messages = 30  # 30 pesan = level 7
+        
+        self.level_progress = min(1.0, self.message_count / target_messages)
+        
+        # Hitung level berdasarkan progress
+        new_level = 1 + int(self.level_progress * 6)  # 0-1 → 1-7
+        new_level = min(7, new_level)
+        
+        if new_level > self.current_level:
+            self.current_level = new_level
+            self.level_up_time = datetime.now()
+            return True  # Level up!
+        
+        return False  # Tidak level up
     
     def should_adapt(self) -> bool:
         """Cek apakah sudah siap adaptasi"""
