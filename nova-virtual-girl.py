@@ -1357,7 +1357,7 @@ Aktivitas terakhir: {memory.activity_history[-1]['activity'] if memory.activity_
         )
         return CONFIRM_CLOSE
     
-    async def close_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def close_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user_id = query.from_user.id
