@@ -885,14 +885,13 @@ Ayo ngobrol... 💕"""
         )
     
     async def status_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        
-    """Lihat status"""
+    """Lihat status hubungan"""
     user_id = update.effective_user.id
-    
+
     if user_id not in self.sessions:
         await update.message.reply_text("❌ Belum ada hubungan.")
         return
-    
+
     memory = self.get_memory(user_id)
     level = memory.fast_memory.current_level
     progress = memory.fast_memory.level_progress * 100
@@ -903,7 +902,7 @@ Ayo ngobrol... 💕"""
     # Progress bar
     bar = "▓" * int(progress/10) + "░" * (10 - int(progress/10))
     
-    # PERBAIKAN: gunakan .get() dengan default value 0
+    # Ambil nilai dengan default
     romantic_ratio = style.get("romantic_ratio", 0)
     vulgar_ratio = style.get("vulgar_ratio", 0)
     dominant_type = style.get("dominant_type", "normal")
