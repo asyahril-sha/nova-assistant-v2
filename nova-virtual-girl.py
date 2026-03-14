@@ -1460,7 +1460,8 @@ async def force_reset(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if user_id in self.arousal:
             del self.arousal[user_id]
     
-    await update.message.reply_text("🔄 State di-reset. Silakan /start lagi.")
+    await update.message.reply_text("🔄 State di-reset. Silakan /start lagi."
+    )
     
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         help_text = """
