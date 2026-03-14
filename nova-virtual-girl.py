@@ -1538,7 +1538,7 @@ def main():
     
     # Conversation handlers
     start_conv = ConversationHandler(
-        entry_points=[CommandHandler('start', bot.start_command)],
+        entry_points=[CommandHandler('start', bot.start_command)],  # <-- LINE 1541 (PERBAIKAN)
         states={
             0: [CallbackQueryHandler(bot.start_pause_callback, pattern='^(unpause|new)$')],
             SELECTING_ROLE: [CallbackQueryHandler(bot.agree_18_callback, pattern='^agree_18$'),
@@ -1575,7 +1575,7 @@ def main():
     app.add_handler(CommandHandler("couple", bot.couple_command))
     app.add_handler(CommandHandler("couple_next", bot.couple_next))
     app.add_handler(CommandHandler("couple_stop", bot.couple_stop))
-    app.add_handler(CommandHandler("reset", bot.force_reset))  # opsional
+    # app.add_handler(CommandHandler("reset", bot.force_reset))  # opsional - komen dulu jika belum yakin
     
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, bot.handle_message))
     
