@@ -813,10 +813,11 @@ class GadisUltimateV54:
     rel_id = cursor.lastrowid
     self.db.commit()
     
-    # Set session
-    self.sessions[user_id] = rel_id
+    # Set session - PERBAIKAN: self.sessions, bukan self.session
+    self.sessions[user_id] = rel_id  # <-- 'sessions' dengan 's', bukan 'session'
     memory = self.get_memory(user_id)
     
+    # PERBAIKAN: String f yang benar
     intro = f"""*tersenyum*
 
 Aku {name}. Senang kenal kamu.
