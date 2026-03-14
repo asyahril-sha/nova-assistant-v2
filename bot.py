@@ -711,7 +711,6 @@ class GadisUltimateV54:
         print("\n📝 **COMMANDS:**")
         print("  /start - Mulai hubungan baru")
         print("  /status - Lihat status & progress")
-        print("  /dominant [level] - Set mode dominan")
         print("  /pause - Jeda sesi")
         print("  /unpause - Lanjutkan sesi")
         print("  /end - Akhiri hubungan")
@@ -794,32 +793,64 @@ class GadisUltimateV54:
         )
         
         return SELECTING_ROLE
-
+    
+    async def start_pause_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle pilihan saat start dengan pause"""
+        query = update.callback_query
+        await query.answer()
+        
+        user_id = query.from_user.id
+        
+        if query.data == "unpause":
+            rel_id, _ = self.paused_sessions[user_id]
+            self.sessions[user_id] = rel_id
+            del self.paused_sessions[user_id]
+            await query.edit_message_text("▶️ Lanjutkan!")
+            return ACTIVE_SESSION
+        
+        elif query.data == "new":
+            if user_id in self.paused_sessions:
+                del self.paused_sessions[user_id]
+            
+            # Pilih role baru
+            keyboard = [
+                [InlineKeyboardButton("👨‍👩‍👧‍👦 Ipar", callback_data="role_ipar")],
+                [InlineKeyboardButton("💼 Teman Kantor", callback_data="role_teman_kantor")],
+                [InlineKeyboardButton("💃 Janda", callback_data="role_janda")],
+                [InlineKeyboardButton("🦹 Pelakor", callback_data="role_pelakor")],
+                [InlineKeyboardButton("💍 Istri Orang", callback_data="role_istri_orang")],
+                [InlineKeyboardButton("🌿 PDKT", callback_data="role_pdkt")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await query.edit_message_text("✨ Pilih role:", reply_markup=reply_markup)
+            return SELECTING_ROLE
+        
+        return ConversationHandler.END
     
     async def role_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Pilih role"""
-    query = update.callback_query
-    await query.answer()
-    
-    user_id = query.from_user.id
-    role = query.data.replace("role_", "")
-    name = random.choice(self.female_names.get(role, ["Aurora"]))
-    
-    # Simpan ke database
-    cursor = self.db.cursor()
-    cursor.execute("""
-        INSERT INTO relationships (user_id, bot_name, bot_role, level)
-        VALUES (?, ?, ?, ?)
-    """, (user_id, name, role, START_LEVEL))
-    rel_id = cursor.lastrowid
-    self.db.commit()
-    
-    # Set session - PERBAIKAN: self.sessions, bukan self.session
-    self.sessions[user_id] = rel_id  # <-- 'sessions' dengan 's', bukan 'session'
-    memory = self.get_memory(user_id)
-    
-    # PERBAIKAN: String f yang benar
-    intro = f"""*tersenyum*
+        """Pilih role"""
+        query = update.callback_query
+        await query.answer()
+        
+        user_id = query.from_user.id
+        role = query.data.replace("role_", "")
+        name = random.choice(self.female_names.get(role, ["Aurora"]))
+        
+        # Simpan ke database
+        cursor = self.db.cursor()
+        cursor.execute("""
+            INSERT INTO relationships (user_id, bot_name, bot_role, level)
+            VALUES (?, ?, ?, ?)
+        """, (user_id, name, role, START_LEVEL))
+        rel_id = cursor.lastrowid
+        self.db.commit()
+        
+        # Set session
+        self.sessions[user_id] = rel_id
+        memory = self.get_memory(user_id)
+        
+        intro = f"""*tersenyum*
 
 Aku {name}. Senang kenal kamu.
 
@@ -828,91 +859,89 @@ Makin sering ngobrol, makin dekat kita.
 Target: Level 7 dalam 30 menit!
 
 Ayo ngobrol... 💕"""
-    
-    await query.edit_message_text(intro)
-    return ACTIVE_SESSION
+        
+        await query.edit_message_text(intro)
+        return ACTIVE_SESSION
     
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle pesan user"""
+        if not update.message or not update.message.text:
+            return
         
-    """Handle pesan user"""
-    
-    if not update.message or not update.message.text:
-        return
-    
-    user_id = update.effective_user.id
-    message = update.message.text
-    
-    # Cek sesi
-    if user_id in self.paused_sessions:
-        await update.message.reply_text("⏸️ Sesi di-pause. Ketik /unpause")
-        return
-    
-    if user_id not in self.sessions:
-        await update.message.reply_text("❌ /start dulu ya!")
-        return
-    
-    # Proses dengan memory
-    memory = self.get_memory(user_id)
-    analysis = memory.process_message(message)
-    
-    # Update database
-    cursor = self.db.cursor()
-    cursor.execute("""
-        UPDATE relationships 
-        SET level = ?, last_active = CURRENT_TIMESTAMP
-        WHERE id = ?
-    """, (memory.fast_memory.current_level, self.sessions[user_id]))
-    
-    cursor.execute("""
-        INSERT INTO conversations (relationship_id, role, content, level)
-        VALUES (?, 'user', ?, ?)
-    """, (self.sessions[user_id], message, memory.fast_memory.current_level))
-    self.db.commit()
-    
-    # Generate response
-    response = self.responder.generate(message, analysis, memory)
-    
-    # Simpan response
-    cursor.execute("""
-        INSERT INTO conversations (relationship_id, role, content, level)
-        VALUES (?, 'assistant', ?, ?)
-    """, (self.sessions[user_id], response, memory.fast_memory.current_level))
-    self.db.commit()
-    
-    # Kirim response
-    await update.message.reply_text(response)
-    
-    # Level up message
-    if memory.fast_memory.current_level == 7:
-        await update.message.reply_text(
-            "✨ **Level 7!** Sekarang kita sudah intim. Lanjutkan..."
-        )
+        user_id = update.effective_user.id
+        message = update.message.text
+        
+        # Cek sesi
+        if user_id in self.paused_sessions:
+            await update.message.reply_text("⏸️ Sesi di-pause. Ketik /unpause")
+            return
+        
+        if user_id not in self.sessions:
+            await update.message.reply_text("❌ /start dulu ya!")
+            return
+        
+        # Proses dengan memory
+        memory = self.get_memory(user_id)
+        analysis = memory.process_message(message)
+        
+        # Update database
+        cursor = self.db.cursor()
+        cursor.execute("""
+            UPDATE relationships 
+            SET level = ?, last_active = CURRENT_TIMESTAMP
+            WHERE id = ?
+        """, (memory.fast_memory.current_level, self.sessions[user_id]))
+        
+        cursor.execute("""
+            INSERT INTO conversations (relationship_id, role, content, level)
+            VALUES (?, 'user', ?, ?)
+        """, (self.sessions[user_id], message, memory.fast_memory.current_level))
+        self.db.commit()
+        
+        # Generate response
+        response = self.responder.generate(message, analysis, memory)
+        
+        # Simpan response
+        cursor.execute("""
+            INSERT INTO conversations (relationship_id, role, content, level)
+            VALUES (?, 'assistant', ?, ?)
+        """, (self.sessions[user_id], response, memory.fast_memory.current_level))
+        self.db.commit()
+        
+        # Kirim response
+        await update.message.reply_text(response)
+        
+        # Level up message
+        if memory.fast_memory.current_level == 7:
+            await update.message.reply_text(
+                "✨ **Level 7!** Sekarang kita sudah intim. Lanjutkan..."
+            )
     
     async def status_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Lihat status hubungan"""
-    user_id = update.effective_user.id
-
-    if user_id not in self.sessions:
-        await update.message.reply_text("❌ Belum ada hubungan.")
-        return
-
-    memory = self.get_memory(user_id)
-    level = memory.fast_memory.current_level
-    progress = memory.fast_memory.level_progress * 100
-    remaining = 30 - (memory.fast_memory.message_count * 1)  # estimasi
-    
-    style = memory.fast_memory.user_preferences.get_response_style(user_id)
-    
-    # Progress bar
-    bar = "▓" * int(progress/10) + "░" * (10 - int(progress/10))
-    
-    # Ambil nilai dengan default
-    romantic_ratio = style.get("romantic_ratio", 0)
-    vulgar_ratio = style.get("vulgar_ratio", 0)
-    dominant_type = style.get("dominant_type", "normal")
-    speed_type = style.get("speed_type", "normal")
-    
-    status = f"""
+        """Lihat status"""
+        user_id = update.effective_user.id
+        
+        if user_id not in self.sessions:
+            await update.message.reply_text("❌ Belum ada hubungan.")
+            return
+        
+        memory = self.get_memory(user_id)
+        level = memory.fast_memory.current_level
+        progress = memory.fast_memory.level_progress * 100
+        remaining = 30 - (memory.fast_memory.message_count * 1)  # estimasi
+        
+        style = memory.fast_memory.user_preferences.get_response_style(user_id)
+        
+        # Progress bar
+        bar = "▓" * int(progress/10) + "░" * (10 - int(progress/10))
+        
+        # Ambil nilai dengan default
+        romantic_ratio = style.get("romantic_ratio", 0)
+        vulgar_ratio = style.get("vulgar_ratio", 0)
+        dominant_type = style.get("dominant_type", "normal")
+        speed_type = style.get("speed_type", "normal")
+        
+        status = f"""
 📊 **STATUS HUBUNGAN**
 
 Level: {level}/7 {bar}
@@ -927,7 +956,79 @@ Estimasi ke Level 7: {max(0, remaining)} menit
 
 💬 Total pesan: {memory.fast_memory.message_count}
 """
-    await update.message.reply_text(status)
+        await update.message.reply_text(status)
+    
+    async def pause_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Pause sesi"""
+        user_id = update.effective_user.id
+        
+        if user_id not in self.sessions:
+            await update.message.reply_text("❌ Tidak ada sesi aktif.")
+            return
+        
+        self.paused_sessions[user_id] = (self.sessions[user_id], datetime.now())
+        del self.sessions[user_id]
+        
+        await update.message.reply_text("⏸️ Sesi di-pause. /unpause untuk lanjut.")
+    
+    async def unpause_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Unpause sesi"""
+        user_id = update.effective_user.id
+        
+        if user_id not in self.paused_sessions:
+            await update.message.reply_text("❌ Tidak ada sesi di-pause.")
+            return
+        
+        rel_id, pause_time = self.paused_sessions[user_id]
+        paused = (datetime.now() - pause_time).total_seconds()
+        
+        if paused > PAUSE_TIMEOUT:
+            del self.paused_sessions[user_id]
+            await update.message.reply_text("⏰ Sesi expired. /start baru.")
+            return
+        
+        self.sessions[user_id] = rel_id
+        del self.paused_sessions[user_id]
+        
+        await update.message.reply_text("▶️ Sesi dilanjutkan!")
+    
+    async def end_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Akhiri hubungan"""
+        user_id = update.effective_user.id
+        
+        if user_id not in self.sessions:
+            await update.message.reply_text("❌ Tidak ada hubungan aktif.")
+            return
+        
+        keyboard = [
+            [InlineKeyboardButton("💔 Ya", callback_data="end_yes")],
+            [InlineKeyboardButton("💕 Tidak", callback_data="end_no")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text("Yakin mau akhiri?", reply_markup=reply_markup)
+        return CONFIRM_END
+    
+    async def end_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Konfirmasi end"""
+        query = update.callback_query
+        await query.answer()
+        
+        if query.data == "end_no":
+            await query.edit_message_text("💕 Lanjutkan...")
+            return ConversationHandler.END
+        
+        user_id = query.from_user.id
+        
+        if user_id in self.sessions:
+            del self.sessions[user_id]
+        if user_id in self.memories:
+            del self.memories[user_id]
+        if user_id in self.paused_sessions:
+            del self.paused_sessions[user_id]
+        
+        await query.edit_message_text("💔 Selesai. /start untuk baru.")
+        return ConversationHandler.END
     
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Help"""
@@ -948,7 +1049,9 @@ Estimasi ke Level 7: {max(0, remaining)} menit
 • Level 7 dalam 30 menit!
 """
         await update.message.reply_text(help_text)
-    
+
+# <--- PASTIKAN ADA 2 BARIS KOSONG DI SINI --->
+# 
     async def pause_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Pause sesi"""
         user_id = update.effective_user.id
