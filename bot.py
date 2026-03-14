@@ -831,57 +831,58 @@ Ayo ngobrol... 💕"""
         return ACTIVE_SESSION
     
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle pesan user"""
-        if not update.message or not update.message.text:
-            return
-        
-        user_id = update.effective_user.id
-        message = update.message.text
-        
-        # Cek sesi
-        if user_id in self.paused_sessions:
-            await update.message.reply_text("⏸️ Sesi di-pause. Ketik /unpause")
-            return
-        
-        if user_id not in self.sessions:
-            await update.message.reply_text("❌ /start dulu ya!")
-            return
-        
-        # Proses dengan memory
-        memory = self.get_memory(user_id)
-        analysis = memory.process_message(message)
-        
-        # Update database
-        cursor = self.db.cursor()
-        cursor.execute("""
-            UPDATE relationships SET level = ?, last_active = CURRENT_TIMESTAMP
-            WHERE id = ?
-        """, (memory.fast_memory.current_level, self.sessions[user_id]))
-        
-        cursor.execute("""
-            INSERT INTO conversations (relationship_id, role, content, level)
-            VALUES (?, 'user', ?, ?)
-        """, (self.sessions[user_id], message, memory.fast_memory.current_level))
-        self.db.commit()
-        
-        # Generate response
-        response = self.responder.generate(message, analysis, memory)
-        
-        # Simpan response
-        cursor.execute("""
-            INSERT INTO conversations (relationship_id, role, content, level)
-            VALUES (?, 'assistant', ?, ?)
-        """, (self.sessions[user_id], response, memory.fast_memory.current_level))
-        self.db.commit()
-        
-        # Kirim response
-        await update.message.reply_text(response)
-        
-        # Level up message
-        if memory.fast_memory.current_level == 7:
-            await update.message.reply_text(
-                "✨ **Level 7!** Sekarang kita sudah intim. Lanjutkan..."
-            )
+    """Handle pesan user"""
+    if not update.message or not update.message.text:
+        return
+    
+    user_id = update.effective_user.id
+    message = update.message.text
+    
+    # Cek sesi
+    if user_id in self.paused_sessions:
+        await update.message.reply_text("⏸️ Sesi di-pause. Ketik /unpause")
+        return
+    
+    if user_id not in self.sessions:
+        await update.message.reply_text("❌ /start dulu ya!")
+        return
+    
+    # Proses dengan memory
+    memory = self.get_memory(user_id)
+    analysis = memory.process_message(message)
+    
+    # Update database
+    cursor = self.db.cursor()
+    cursor.execute("""
+        UPDATE relationships 
+        SET level = ?, last_active = CURRENT_TIMESTAMP
+        WHERE id = ?
+    """, (memory.fast_memory.current_level, self.sessions[user_id]))
+    
+    cursor.execute("""
+        INSERT INTO conversations (relationship_id, role, content, level)
+        VALUES (?, 'user', ?, ?)
+    """, (self.sessions[user_id], message, memory.fast_memory.current_level))
+    self.db.commit()
+    
+    # Generate response
+    response = self.responder.generate(message, analysis, memory)
+    
+    # Simpan response
+    cursor.execute("""
+        INSERT INTO conversations (relationship_id, role, content, level)
+        VALUES (?, 'assistant', ?, ?)
+    """, (self.sessions[user_id], response, memory.fast_memory.current_level))
+    self.db.commit()
+    
+    # Kirim response
+    await update.message.reply_text(response)
+    
+    # Level up message
+    if memory.fast_memory.current_level == 7:
+        await update.message.reply_text(
+            "✨ **Level 7!** Sekarang kita sudah intim. Lanjutkan..."
+        )
     
     async def status_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         
