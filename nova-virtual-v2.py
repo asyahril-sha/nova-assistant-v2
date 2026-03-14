@@ -5449,8 +5449,7 @@ def main():
     # We'll continue in Part 11B with adding all handlers
 
 # ========== 11B: MAIN FUNCTION - COMMAND REGISTRATION ==========
-
-    # ===== ADD ALL HANDLERS TO APPLICATION =====
+# ===== ADD ALL HANDLERS TO APPLICATION =====
     
     # Add conversation handlers
     app.add_handler(start_conv)
@@ -5477,7 +5476,7 @@ def main():
     # Hidden / debug commands
     app.add_handler(CommandHandler("reset", bot.force_reset))  # Admin only
     
-    # Admin commands (some are in conversation handlers, some are regular)
+    # Admin commands
     app.add_handler(CommandHandler("admin", bot.admin_command))
     app.add_handler(CommandHandler("stats", bot.stats_command))
     app.add_handler(CommandHandler("reload", bot.reload_command))
@@ -5485,16 +5484,10 @@ def main():
     app.add_handler(CommandHandler("get_user", bot.get_user_command))
     
     # ===== MESSAGE HANDLER =====
-    # This handles all non-command text messages
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, bot.handle_message))
     
     # ===== ERROR HANDLER =====
-    # Global error handler to catch exceptions
-    
     async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """
-        Handle errors gracefully without crashing the bot
-        """
         # Log the error
         logger.error(f"Exception while handling an update: {context.error}", exc_info=True)
         
@@ -5508,9 +5501,9 @@ def main():
             try:
                 await update.effective_message.reply_text(error_msg, parse_mode='Markdown')
             except:
-                pass  # Gagal kirim pesan error, abaikan
+                pass
         
-        # Notify admin (if admin ID is set)
+        # Notify admin
         if bot.admin_id != 0:
             try:
                 error_text = f"⚠️ *Error Report*\n\n`{str(context.error)[:500]}`"
@@ -5520,7 +5513,7 @@ def main():
                     parse_mode='Markdown'
                 )
             except:
-                pass  # Gagal notifikasi admin
+                pass
     
     app.add_error_handler(error_handler)
     
@@ -5528,20 +5521,16 @@ def main():
     print("  • Error handler configured")
     
     # ===== STARTUP COMPLETE =====
-    # Display bot information
-    
     print("\n" + "="*70)
     print("✅ **BOT READY!**")
     print("="*70)
     
-    # Statistics
     print("\n📊 **STATISTICS:**")
     print(f"• Database: {Config.DB_PATH}")
     print(f"• Admin ID: {Config.ADMIN_ID if Config.ADMIN_ID != 0 else 'Tidak diset'}")
     print(f"• Target level: {Config.TARGET_LEVEL} in {Config.LEVEL_UP_TIME} menit")
     print(f"• Rate limit: {Config.MAX_MESSAGES_PER_MINUTE} pesan/menit")
     
-    # User commands
     print("\n📝 **USER COMMANDS:**")
     print("• /start     - Mulai hubungan baru (dengan intro fisik)")
     print("• /status    - Lihat status lengkap (termasuk fisik & pakaian)")
@@ -5555,7 +5544,6 @@ def main():
     print("• /couple_stop - Hentikan couple roleplay")
     print("• /help      - Tampilkan bantuan")
     
-    # Admin commands (if admin is configured)
     if Config.ADMIN_ID != 0:
         print("\n🔐 **ADMIN COMMANDS:**")
         print("• /admin     - Menu admin")
@@ -5567,7 +5555,6 @@ def main():
         print("• /get_user  - Lihat detail user tertentu")
         print("• /reset     - Reset paksa user (debug)")
     
-    # Features
     print("\n🎯 **FITUR AKTIF:**")
     print("• 20+ Mood dengan transisi natural")
     print("• Sistem dominasi (dominan/submissive)")
@@ -5583,19 +5570,10 @@ def main():
     print("🚀 Bot is running... Press Ctrl+C to stop.")
     print("="*70 + "\n")
     
-    # We'll continue in Part 11C with starting the bot
-
-# ========== 11C: MAIN FUNCTION - START BOT & ENTRY POINT ==========
-
-    # ===== START THE BOT =====
-    # This starts polling for updates
-    
+    # ========== 11C: MAIN FUNCTION - START BOT ==========
     print("⏱️  Starting polling...")
-    
-    # Start the bot (this blocks until stopped)
     app.run_polling()
-
-
+    
 # ===================== ENTRY POINT =====================
 
 if __name__ == "__main__":
