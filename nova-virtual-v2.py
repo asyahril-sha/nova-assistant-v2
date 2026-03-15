@@ -75,12 +75,12 @@ if not Config.DEEPSEEK_API_KEY or not Config.TELEGRAM_TOKEN:
     sys.exit(1)
 
 # ===================== DATABASE MIGRATION =====================
-# Tambahkan kode ini SETELAH validasi API Keys dan SEBELUM STATE
-
 def migrate_database():
     """Migrate database ke versi terbaru dengan menambahkan kolom yang hilang"""
     db_path = Config.DB_PATH
-    if not os.path.exists(db_path):
+    db_exists = os.path.exists(db_path)
+    
+    if not db_exists:
         print(f"📁 Database {db_path} akan dibuat saat pertama kali digunakan")
         return
     
@@ -93,8 +93,9 @@ def migrate_database():
         columns = [col[1] for col in cursor.fetchall()]
         
         print("📊 Cek database untuk migrasi...")
+        print(f"   Kolom yang ada: {columns}")
         
-        # Daftar kolom yang harus ada (dari versi terbaru)
+        # Daftar kolom yang harus ada
         required_columns = {
             "current_clothing": "TEXT DEFAULT 'pakaian biasa'",
             "last_clothing_change": "TIMESTAMP",
@@ -106,7 +107,17 @@ def migrate_database():
             "most_sensitive_area": "TEXT"
         }
         
-        # Tambahkan kolom yang hilang satu per satu
+        # CEK APAKAH last_clothing_change ADA
+        if "last_clothing_change" not in columns:
+            print("⚠️ Kolom 'last_clothing_change' TIDAK DITEMUKAN!")
+            print("   Mencoba menambahkan...")
+            try:
+                cursor.execute("ALTER TABLE relationships ADD COLUMN last_clothing_change TIMESTAMP")
+                print("   ✅ Kolom 'last_clothing_change' berhasil ditambahkan")
+            except Exception as e:
+                print(f"   ❌ Gagal: {e}")
+        
+        # Tambahkan kolom lain yang hilang
         for col_name, col_type in required_columns.items():
             if col_name not in columns:
                 try:
@@ -115,9 +126,20 @@ def migrate_database():
                 except Exception as e:
                     print(f"  ⚠️ Gagal menambahkan '{col_name}': {e}")
             else:
-                print(f"  ⏭️  Kolom '{col_name}' sudah ada")
+                print(f"  ⏭️ Kolom '{col_name}' sudah ada")
         
         conn.commit()
+        
+        # Verifikasi setelah migrasi
+        cursor.execute("PRAGMA table_info(relationships)")
+        new_columns = [col[1] for col in cursor.fetchall()]
+        print(f"\n📊 Kolom setelah migrasi: {new_columns}")
+        
+        if "last_clothing_change" in new_columns:
+            print("✅ VERIFIKASI: Kolom 'last_clothing_change' BERHASIL ditambahkan!")
+        else:
+            print("❌ VERIFIKASI: Kolom 'last_clothing_change' MASIH TIDAK ADA!")
+        
         conn.close()
         print("✅ Migrasi database selesai!\n")
         
@@ -357,10 +379,15 @@ class DatabaseManager:
 
     # ========== RELATIONSHIP METHODS ==========
     
-    def create_relationship(self, user_id, bot_name, bot_role, physical_attrs=None, clothing=None):
-        """Buat hubungan baru dengan atribut fisik dan pakaian awal opsional"""
+        def create_relationship(self, user_id, bot_name, bot_role, physical_attrs=None, clothing=None):
+        """Buat hubungan baru dengan atribut fisik dan pakaian opsional"""
+        print(f"📝 create_relationship untuk user {user_id}")
+        print(f"   physical_attrs: {physical_attrs}")
+        print(f"   clothing: {clothing}")
+        
         with self.cursor() as c:
             if physical_attrs and clothing:
+                print("   Menjalankan query dengan physical_attrs dan clothing")
                 c.execute("""
                     INSERT OR REPLACE INTO relationships 
                     (user_id, bot_name, bot_role, last_active,
@@ -376,6 +403,7 @@ class DatabaseManager:
                       physical_attrs.get('most_sensitive_area'),
                       clothing))
             elif physical_attrs:
+                print("   Menjalankan query dengan physical_attrs saja")
                 c.execute("""
                     INSERT OR REPLACE INTO relationships 
                     (user_id, bot_name, bot_role, last_active,
@@ -389,6 +417,7 @@ class DatabaseManager:
                       physical_attrs.get('hijab', 0),
                       physical_attrs.get('most_sensitive_area')))
             else:
+                print("   Menjalankan query tanpa physical_attrs")
                 c.execute("""
                     INSERT OR REPLACE INTO relationships 
                     (user_id, bot_name, bot_role, last_active)
