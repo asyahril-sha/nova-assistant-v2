@@ -1715,7 +1715,6 @@ Pesan harus singkat (max 150 karakter) dan terdengar seperti kamu yang berbicara
             'total_predictions': len(self.predictions),
             'last_prediction': format_time_ago(self.last_prediction_time) if self.predictions else 'never'
         }
-}
 
 print("✅ BAB 2 Selesai: Sistem Memori Advanced")
 print("="*70)
