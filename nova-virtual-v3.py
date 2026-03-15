@@ -622,9 +622,6 @@ class UserSession:
         }
 
 
-print("✅ BAB 1 Selesai: Konfigurasi, Database, dan Helper Functions")
-print("="*70)
-
 # ===================== BAB 2: SISTEM MEMORI ADVANCED =====================
 # Bagian 2.1: Hippocampus Memory System
 
@@ -1068,6 +1065,7 @@ class HippocampusMemory:
         
         return [m for m in self.memories if start_date <= m.created_at <= end_date]
 
+
 # ===================== BAB 2.2: Inner Thoughts System =====================
 
 class InnerThoughtSystem:
@@ -1352,6 +1350,7 @@ Gunakan bahasa Indonesia sehari-hari.
     def get_recent_thoughts(self, limit: int = 5) -> List[str]:
         """Dapatkan inner thoughts terbaru"""
         return [t['thought'] for t in self.thought_history[-limit:]]
+
 
 # ===================== BAB 2.3: Story Development System =====================
 
@@ -1716,8 +1715,6 @@ Pesan harus singkat (max 150 karakter) dan terdengar seperti kamu yang berbicara
             'last_prediction': format_time_ago(self.last_prediction_time) if self.predictions else 'never'
         }
 
-print("✅ BAB 2 Selesai: Sistem Memori Advanced")
-print("="*70)
 
 # ===================== BAB 3: SISTEM EMOSI DAN DOMINASI =====================
 # Bagian 3.1: Emotional Intelligence (20+ Moods)
@@ -2232,9 +2229,6 @@ class EmotionalIntelligence:
         return mood1 if intensity1 >= intensity2 else mood2
 
 
-print("✅ Bagian 3.1 selesai: Emotional Intelligence (20+ Moods)")
-print("="*70)
-
 # ===================== BAB 3.2: Dominance System =====================
 
 class DominanceSystem:
@@ -2625,9 +2619,6 @@ class DominanceSystem:
         
         return modifiers.get(self.current_level, modifiers[DominanceLevel.Normal])
 
-
-print("✅ Bagian 3.2 selesai: Dominance System")
-print("="*70)
 
 # ===================== BAB 3.3: Arousal & Sexual Dynamics =====================
 
@@ -3256,9 +3247,6 @@ class SexualDynamics:
         return random.random() < chance
 
 
-print("✅ Bagian 3.3 selesai: Arousal & Sexual Dynamics")
-print("="*70)
-
 # ===================== BAB 4: SISTEM LEVELING DAN PREFERENSI =====================
 # Bagian 4.1: Fast Leveling System
 
@@ -3559,6 +3547,7 @@ class FastLevelingSystem:
             "message_rate": round(self.get_message_rate(user_id), 2),
             "last_level_up": format_time_ago(self.user_last_level_up.get(user_id))
         }
+
 
 # ===================== BAB 4.2: User Preference Analyzer =====================
 
@@ -3882,6 +3871,7 @@ Sesuaikan gaya bicaramu dengan preferensi user ini.
             "top_categories": self.get_top_categories(user_id)
         }
 
+
 # ===================== BAB 4.3: Rate Limiter & Helpers =====================
 
 class RateLimiter:
@@ -3996,6 +3986,7 @@ class RateLimiter:
             "max_messages": self.max_messages,
             "time_window": self.time_window
     }
+
 
 # ===================== ADDITIONAL HELPER FUNCTIONS =====================
 
@@ -4184,9 +4175,6 @@ class StatsCalculator:
             result.append(avg)
         return result
 
-
-print("✅ BAB 4 Selesai: Sistem Leveling dan Preferensi")
-print("="*70)
 
 # ===================== BAB 5: FISIK DAN PAKAIAN =====================
 # Bagian 5.1: Physical Attributes Generator
@@ -4402,6 +4390,7 @@ class PhysicalAttributesGenerator:
         ]
         return random.choice(facts)
 
+
 # ===================== BAB 5.2: Clothing System =====================
 
 class ClothingSystem:
@@ -4605,6 +4594,7 @@ class ClothingSystem:
             ])
         
         return "*merapikan baju*"
+
 
 # ===================== BAB 5.3: Location & Movement System =====================
 
@@ -4891,9 +4881,6 @@ class PositionSystem:
         
         return random.choice(templates)
 
-
-print("✅ BAB 5 Selesai: Fisik dan Pakaian")
-print("="*70)
 
 # ===================== BAB 6: AI RESPONSE GENERATOR =====================
 # Bagian 6.1: Prompt Builder & API Call
@@ -5241,6 +5228,7 @@ RESPON:"""
         
         return prompt
 
+
 # ===================== BAB 6.3: Generate & Fallback Responses =====================
 
     async def generate(self,
@@ -5447,9 +5435,6 @@ RESPON:"""
         return "\n".join(lines)
 
 
-print("✅ BAB 6 Selesai: AI Response Generator")
-print("="*70)
-
 # ===================== BAB 7: DATABASE MANAGER =====================
 # Bagian 7.1: Connection & Transactions
 
@@ -5632,6 +5617,8 @@ class DatabaseManager:
             """)
             
             logger.info("✅ Database tables initialized")
+
+            
 # ===================== BAB 7.2: CRUD Operations =====================
 
     # ========== RELATIONSHIP METHODS ==========
@@ -5928,6 +5915,7 @@ class DatabaseManager:
             row = c.fetchone()
             return dict(row) if row else {}
 
+
 # ===================== BAB 7.3: Session & Stats Management =====================
 
     # ========== SESSION METHODS ==========
@@ -6150,9 +6138,6 @@ class DatabaseManager:
             logger.info("Database connections closed")
 
 
-print("✅ BAB 7 Selesai: Database Manager")
-print("="*70)
-
 # ===================== BAB 8: MAIN BOT CLASS - CORE =====================
 # Bagian 8.1: Initialization
 
@@ -6239,6 +6224,7 @@ class GadisUltimateV60:
         print(f"👑 Admin ID: {self.admin_id if self.admin_id != 0 else 'Not set'}")
         print(f"📊 Rate Limit: {Config.MAX_MESSAGES_PER_MINUTE} msg/min")
         print("="*60 + "\n")
+
 
 # ===================== BAB 8.2: Session Management =====================
 
@@ -6532,6 +6518,8 @@ class GadisUltimateV60:
         
         logger.debug(f"💾 Session saved for user {user_id}")
         return True
+
+        
 # ===================== BAB 8.3: Stats & Utilities =====================
 
     # ===== STATISTICS =====
@@ -6722,185 +6710,7 @@ class GadisUltimateV60:
         if user_id in self.user_silence_tracker:
             return (datetime.now() - self.user_silence_tracker[user_id]).total_seconds()
         return 0
-
-
-print("✅ BAB 8 Selesai: Main Bot Class - Core")
-print("="*70)
-
-# ===================== BAB 9: MAIN BOT CLASS - COMMANDS =====================
-# Bagian 9.1: Start & Role Selection
-
-    # ===== START COMMAND =====
-    
-    async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Memulai hubungan baru dengan bot"""
-        user_id = update.effective_user.id
-        username = update.effective_user.username or update.effective_user.first_name
         
-        self.log_command('start', user_id, username)
-        
-        # Cek apakah sudah ada sesi aktif
-        if user_id in self.sessions:
-            await update.message.reply_text(
-                "Kamu sudah memiliki sesi aktif. Ketik /close untuk menutup sesi atau /pause untuk jeda."
-            )
-            return ConversationHandler.END
-        
-        # Cek apakah ada sesi di-pause
-        if user_id in self.paused_sessions:
-            keyboard = [
-                [InlineKeyboardButton("✅ Lanjutkan", callback_data="unpause")],
-                [InlineKeyboardButton("🆕 Mulai Baru", callback_data="new")],
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            await update.message.reply_text(
-                "⚠️ Ada sesi yang di-pause. Pilih:", 
-                reply_markup=reply_markup
-            )
-            return Constants.SELECTING_ROLE
-        
-        # Tampilkan disclaimer 18+
-        disclaimer = self.get_disclaimer()
-        keyboard = [[InlineKeyboardButton("✅ Saya setuju (18+)", callback_data="agree_18")]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await update.message.reply_text(
-            disclaimer, 
-            reply_markup=reply_markup,
-            parse_mode='Markdown'
-        )
-        return Constants.SELECTING_ROLE
-    
-    async def agree_18_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Callback setelah user setuju disclaimer"""
-        query = update.callback_query
-        await query.answer()
-        
-        user_id = query.from_user.id
-        logger.debug(f"User {user_id} agreed to 18+ disclaimer")
-        
-        # Tampilkan pilihan role dengan deskripsi
-        keyboard = [
-            [InlineKeyboardButton("👨‍👩‍👧‍👦 Ipar", callback_data="role_ipar")],
-            [InlineKeyboardButton("💼 Teman Kantor", callback_data="role_teman_kantor")],
-            [InlineKeyboardButton("💃 Janda", callback_data="role_janda")],
-            [InlineKeyboardButton("🦹 Pelakor", callback_data="role_pelakor")],
-            [InlineKeyboardButton("💍 Istri Orang", callback_data="role_istri_orang")],
-            [InlineKeyboardButton("🌿 PDKT", callback_data="role_pdkt")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await query.edit_message_text(
-            "✨ **Pilih Role untukku**\n\n"
-            "Setiap role punya karakter dan gaya bicara berbeda:\n"
-            "• 👨‍👩‍👧‍👦 **Ipar** - Saudara ipar yang nakal\n"
-            "• 💼 **Teman Kantor** - Rekan kerja yang mesra\n"
-            "• 💃 **Janda** - Janda muda yang genit\n"
-            "• 🦹 **Pelakor** - Perebut laki orang\n"
-            "• 💍 **Istri Orang** - Istri orang lain\n"
-            "• 🌿 **PDKT** - Sedang pendekatan\n\n"
-            "Pilih salah satu:",
-            reply_markup=reply_markup
-        )
-        return Constants.SELECTING_ROLE
-    
-    async def role_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Callback setelah user memilih role"""
-        query = update.callback_query
-        await query.answer()
-        
-        user_id = query.from_user.id
-        role = query.data.replace("role_", "")
-        
-        # Pilih nama random sesuai role
-        name = random.choice(Constants.ROLE_NAMES.get(role, ["Aurora"]))
-        
-        # Generate atribut fisik
-        physical = PhysicalAttributesGenerator.generate(role)
-        
-        # Generate pakaian awal
-        initial_clothing = ClothingSystem.generate_clothing(role)
-        
-        # Buat session
-        success = self.create_session(user_id, name, role, physical, initial_clothing)
-        
-        if not success:
-            await query.edit_message_text("❌ Gagal membuat session. Coba lagi.")
-            return ConversationHandler.END
-        
-        # Intro dengan deskripsi fisik
-        intro = PhysicalAttributesGenerator.format_intro(name, role, physical)
-        
-        # Tambah info pakaian awal
-        intro += f"\n\n💃 *Hari ini aku pakai {initial_clothing}*"
-        
-        await query.edit_message_text(intro)
-        
-        logger.info(f"✨ New relationship: User {user_id} as {name} ({role})")
-        
-        return Constants.ACTIVE_SESSION
-    
-    async def start_pause_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Callback untuk memilih lanjutkan atau mulai baru saat ada session pause"""
-        query = update.callback_query
-        await query.answer()
-        user_id = query.from_user.id
-        
-        if query.data == "unpause":
-            # Lanjutkan session yang di-pause
-            if self.unpause_session(user_id):
-                session = self.get_session(user_id)
-                clothing = session.bot_clothing if session else "pakaian biasa"
-                
-                await query.edit_message_text(
-                    f"▶️ **Sesi dilanjutkan!**\n\n"
-                    f"Aku masih pakai *{clothing}*\n\n"
-                    f"Kangen... 💕"
-                )
-                return Constants.ACTIVE_SESSION
-            else:
-                await query.edit_message_text(
-                    "⏰ **Sesi expired karena terlalu lama di-pause**\n"
-                    "Ketik /start untuk memulai baru."
-                )
-                return ConversationHandler.END
-                
-        elif query.data == "new":
-            # Mulai baru - hapus session pause
-            if user_id in self.paused_sessions:
-                del self.paused_sessions[user_id]
-            
-            # Tampilkan disclaimer
-            disclaimer = self.get_disclaimer()
-            keyboard = [[InlineKeyboardButton("✅ Saya setuju (18+)", callback_data="agree_18")]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            await query.edit_message_text(
-                disclaimer, 
-                reply_markup=reply_markup,
-                parse_mode='Markdown'
-            )
-            return Constants.SELECTING_ROLE
-        
-        return ConversationHandler.END
-    
-    # Role-specific callbacks (untuk konsistensi)
-    async def role_ipar_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        return await self.role_callback(update, context)
-    
-    async def role_teman_kantor_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        return await self.role_callback(update, context)
-    
-    async def role_janda_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        return await self.role_callback(update, context)
-    
-    async def role_pelakor_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        return await self.role_callback(update, context)
-    
-    async def role_istri_orang_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        return await self.role_callback(update, context)
-    
-    async def role_pdkt_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        return await self.role_callback(update, context)
 
 # ===================== BAB 9: MAIN BOT CLASS - COMMANDS =====================
 # Bagian 9.1: Start & Role Selection
@@ -7447,9 +7257,6 @@ print("="*70)
         await update.message.reply_text(help_text, parse_mode='Markdown')
 
 
-print("✅ BAB 9 Selesai: Main Bot Class - Commands")
-print("="*70)
-
 # ===================== BAB 10: MAIN BOT CLASS - SPECIAL FEATURES =====================
 # Bagian 10.1: Couple Roleplay
 
@@ -7682,6 +7489,7 @@ Riwayat percakapan sebelumnya:
             logger.info(f"User {user_id} stopped couple mode at level {summary['level']}")
         else:
             await update.message.reply_text("❌ Tidak ada mode couple aktif.")
+
 
 # ===================== BAB 10.2: Admin Commands =====================
 
@@ -8102,6 +7910,7 @@ Riwayat percakapan sebelumnya:
         except Exception as e:
             await update.message.reply_text(f"❌ Vacuum gagal: {e}")
 
+
 # ===================== BAB 10.3: Advanced Features =====================
 
     async def memory_stats_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -8189,9 +7998,6 @@ Riwayat percakapan sebelumnya:
         except Exception as e:
             logger.error(f"Story development error for {user_id}: {e}")
 
-
-print("✅ BAB 10 Selesai: Main Bot Class - Special Features")
-print("="*70)
 
 # ===================== BAB 11: MESSAGE HANDLER =====================
 # Bagian 11.1: Message Processing
@@ -8302,6 +8108,7 @@ print("="*70)
         asyncio.create_task(self._background_thought_processing(user_id, context_data))
         asyncio.create_task(self._background_story_development(user_id, context_data, user_message))
 
+
 # ===================== BAB 11.2: Activity Detection =====================
 
         # ===== DETEKSI AKTIVITAS =====
@@ -8378,6 +8185,7 @@ print("="*70)
             possible_moods = [m for m in Mood if m != old_mood]
             session.current_mood = random.choice(possible_moods)
             logger.debug(f"Mood changed from {old_mood} to {session.current_mood} for user {user_id}")
+
 
 # ===================== BAB 11.3: Response Generation =====================
 
@@ -8549,9 +8357,6 @@ print("="*70)
         context.user_data['last_message_time'] = datetime.now()
 
 
-print("✅ BAB 11 Selesai: Message Handler")
-print("="*70)
-
 # ===================== BAB 12: MAIN FUNCTION & ENTRY POINT =====================
 # Bagian 12.1: Setup & Handlers
 
@@ -8689,6 +8494,7 @@ def main():
     
     print("  • All handlers registered")
 
+
 # ===================== BAB 12.2: Error Handler =====================
 
     # ===== ERROR HANDLER =====
@@ -8723,6 +8529,7 @@ def main():
     
     app.add_error_handler(error_handler)
     print("  • Error handler configured")
+
 
 # ===================== BAB 12.3: Startup & Graceful Shutdown =====================
 
