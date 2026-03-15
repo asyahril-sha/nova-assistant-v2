@@ -378,8 +378,8 @@ class DatabaseManager:
             return dict(row) if row else None
 
     # ========== RELATIONSHIP METHODS ==========
-    
-        def create_relationship(self, user_id, bot_name, bot_role, physical_attrs=None, clothing=None):
+
+    def create_relationship(self, user_id, bot_name, bot_role, physical_attrs=None, clothing=None):
         """Buat hubungan baru dengan atribut fisik dan pakaian opsional"""
         print(f"📝 create_relationship untuk user {user_id}")
         print(f"   physical_attrs: {physical_attrs}")
@@ -444,7 +444,7 @@ class DatabaseManager:
                 SET {', '.join(fields)}, last_active=CURRENT_TIMESTAMP
                 WHERE user_id=?
             """, values)
-    
+            
     def update_clothing(self, user_id, clothing):
         """Update pakaian dan timestamp perubahan"""
         with self.cursor() as c:
