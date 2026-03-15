@@ -7,6 +7,7 @@ Fitur baru:
 - Semua fitur sebelumnya tetap ada
 """
 
+import pickle
 import os
 import sys
 import logging
@@ -18,6 +19,9 @@ import time
 import hashlib
 import re
 import threading
+import hashlib
+import random
+import numpy as np
 from datetime import datetime, timedelta
 from enum import Enum
 from collections import defaultdict
@@ -210,6 +214,313 @@ class ArousalState(Enum):
     HORNY = "horny"
     VERY_HORNY = "sangat horny"
     CLIMAX = "klimaks"
+
+# ===================== ADVANCED MEMORY SYSTEM =====================
+# Fitur Premium: Memori Jangka Panjang dengan Semantic Forgetting
+# Terinspirasi dari cara kerja hippocampus manusia
+
+class MemoryTypes(Enum):
+    COMPACT = "compact"      # Ringkasan 1 kalimat dari seluruh percakapan
+    EPISODIC = "episodic"    # Momen-momen penting dengan konteks
+    SEMANTIC = "semantic"    # Pengetahuan yang diekstrak dari percakapan
+    PROCEDURAL = "procedural" # Cara melakukan sesuatu, kebiasaan
+    INNER_THOUGHT = "inner_thought" # Pikiran dalam hati bot
+    PREDICTION = "prediction" # Prediksi arah cerita
+
+class MemoryItem:
+    """
+    Item memori individual dengan metadata lengkap
+    Setiap memori memiliki bobot kepentingan dan akan meluruh seiring waktu
+    """
+    def __init__(self, content, memory_type, importance=1.0, emotion=None, context=None):
+        self.id = hashlib.md5(f"{content}{datetime.now()}".encode()).hexdigest()[:8]
+        self.content = content
+        self.memory_type = memory_type
+        self.importance = importance  # 0-1, semakin penting semakin lama diingat
+        self.emotion = emotion
+        self.context = context or {}
+        self.created_at = datetime.now()
+        self.last_accessed = datetime.now()
+        self.access_count = 0
+        self.embedding = None  # Akan diisi dengan vector embedding
+        self.related_memories = []  # ID memori terkait
+        
+    def access(self):
+        """Tandai memori ini diakses"""
+        self.last_accessed = datetime.now()
+        self.access_count += 1
+        # Semakin sering diakses, semakin penting
+        self.importance = min(1.0, self.importance + 0.05)
+    
+    def get_age_weight(self, decay_rate=0.01):
+        """
+        Hitung bobot berdasarkan umur
+        Semakin tua memori, semakin kecil bobotnya (semantic forgetting)
+        """
+        age_hours = (datetime.now() - self.created_at).total_seconds() / 3600
+        # Eksponensial decay: semakin tua, semakin cepat dilupakan
+        decay = np.exp(-decay_rate * age_hours)
+        return max(0.1, decay)
+    
+    def get_relevance_score(self):
+        """Hitung skor relevansi total = importance * age_weight * (access_count+1)"""
+        return self.importance * self.get_age_weight() * (self.access_count + 1)
+    
+    def __repr__(self):
+        return f"[{self.id}|{self.memory_type.value}|{self.importance:.1f}] {self.content[:50]}..."
+
+class HippocampusMemory:
+    """
+    Sistem memori terinspirasi hippocampus manusia
+    - Compact Memory: ringkasan terus-menerus
+    - Episodic Memory: momen penting dengan konteks
+    - Semantic Memory: pengetahuan yang diekstrak
+    - Semantic Forgetting: memori yang jarang diakses akan dilupakan
+    """
+    
+    def __init__(self, user_id, storage_dir="memory_storage"):
+        self.user_id = user_id
+        self.storage_dir = storage_dir
+        self.memories = []  # Semua memori
+        self.compact_memory = None  # Ringkasan 1 kalimat
+        self.max_items = 1000
+        self.decay_rate = 0.01  # Laju pelupaan
+        self.consolidation_threshold = 0.7  # Threshold untuk episodic memory
+        self.last_consolidation = datetime.now()
+        
+        # Buat direktori storage jika belum ada
+        os.makedirs(storage_dir, exist_ok=True)
+        
+        # Load memori dari file
+        self.load()
+    
+    def add_memory(self, content, memory_type, importance=None, emotion=None, context=None):
+        """
+        Tambahkan memori baru
+        Returns: MemoryItem yang ditambahkan
+        """
+        if importance is None:
+            importance = self._calculate_importance(content, context)
+        
+        item = MemoryItem(content, memory_type, importance, emotion, context)
+        
+        # Generate simple embedding (hash-based, untuk demo)
+        item.embedding = self._simple_embed(content)
+        
+        self.memories.append(item)
+        
+        # Update compact memory jika perlu (setiap 10 memori)
+        if len(self.memories) % 10 == 0:
+            self._update_compact_memory()
+        
+        # Consolidate jika sudah waktunya
+        if (datetime.now() - self.last_consolidation).total_seconds() > 3600:  # Setiap jam
+            self.consolidate_memories()
+        
+        # Prune jika terlalu banyak
+        if len(self.memories) > self.max_items:
+            self._prune_memories()
+        
+        self.save()
+        return item
+    
+    def _calculate_importance(self, content, context):
+        """Hitung seberapa penting suatu memori (0-1)"""
+        importance = 0.5  # Default
+        
+        # Faktor-faktor yang meningkatkan importance
+        if context:
+            # Emosi kuat
+            if context.get('emotion_intensity', 0) > 0.7:
+                importance += 0.2
+            
+            # Climax / orgasme
+            if context.get('is_climax', False):
+                importance += 0.3
+            
+            # Level tinggi
+            if context.get('level', 0) > 8:
+                importance += 0.2
+            
+            # First time experiences
+            if context.get('is_first_time', False):
+                importance += 0.25
+        
+        # Kata-kata kunci penting
+        important_keywords = [
+            'cinta', 'sayang', 'first time', 'pertama kali', 
+            'orgasme', 'climax', 'rahasia', 'janji', 'sumpah',
+            'menikah', 'putus', 'selamanya', 'forever'
+        ]
+        for word in important_keywords:
+            if word in content.lower():
+                importance += 0.1
+                break
+        
+        return min(1.0, importance)
+    
+    def _simple_embed(self, text):
+        """Simple embedding untuk demo (hash-based)"""
+        hash_obj = hashlib.md5(text.encode())
+        return np.frombuffer(hash_obj.digest(), dtype=np.uint8)[:32] / 255.0
+    
+    def retrieve_relevant(self, query, top_k=5, memory_types=None, min_importance=0.3):
+        """
+        Cari memori yang relevan dengan query
+        Menggunakan cosine similarity sederhana
+        """
+        query_embed = self._simple_embed(query)
+        
+        # Filter berdasarkan tipe dan importance
+        candidates = [m for m in self.memories 
+                     if (not memory_types or m.memory_type in memory_types)
+                     and m.importance >= min_importance]
+        
+        if not candidates:
+            return []
+        
+        # Hitung similarity
+        scored = []
+        for mem in candidates:
+            if mem.embedding is not None:
+                # Cosine similarity sederhana
+                sim = np.dot(query_embed, mem.embedding) / (
+                    np.linalg.norm(query_embed) * np.linalg.norm(mem.embedding) + 1e-8
+                )
+                # Kalikan dengan relevance score
+                total_score = sim * mem.get_relevance_score()
+                scored.append((total_score, mem))
+        
+        scored.sort(key=lambda x: x[0], reverse=True)
+        
+        # Update access count untuk yang terpilih
+        results = []
+        for score, mem in scored[:top_k]:
+            mem.access()
+            results.append(mem)
+        
+        return results
+    
+    def get_recent_memories(self, hours=24, memory_types=None):
+        """Dapatkan memori dari beberapa jam terakhir"""
+        cutoff = datetime.now() - timedelta(hours=hours)
+        return [m for m in self.memories 
+                if m.created_at > cutoff
+                and (not memory_types or m.memory_type in memory_types)]
+    
+    def get_important_memories(self, threshold=0.7):
+        """Dapatkan memori penting (importance > threshold)"""
+        return [m for m in self.memories if m.importance > threshold]
+    
+    def _update_compact_memory(self):
+        """Update ringkasan 1 kalimat dari semua memori"""
+        if not self.memories:
+            return
+        
+        # Ambil memori-memori penting
+        important = sorted(self.memories, key=lambda x: x.importance, reverse=True)[:5]
+        
+        # Generate compact summary (dalam produksi, gunakan AI)
+        summary_parts = []
+        for mem in important:
+            if len(mem.content) > 50:
+                summary_parts.append(mem.content[:50] + "...")
+            else:
+                summary_parts.append(mem.content)
+        
+        self.compact_memory = " | ".join(summary_parts)
+    
+    def consolidate_memories(self):
+        """
+        Konsolidasi memori: pindahkan memori penting ke long-term storage
+        dan buat ringkasan
+        """
+        self.last_consolidation = datetime.now()
+        
+        # Ambil memori dengan importance tinggi
+        important_mems = self.get_important_memories(threshold=0.7)
+        
+        if len(important_mems) > 20:
+            # Buat ringkasan dari memori penting
+            summary = f"{len(important_mems)} momen penting: "
+            summary += ", ".join([m.content[:30] for m in important_mems[:5]])
+            
+            # Tambahkan sebagai semantic memory
+            self.add_memory(
+                content=summary,
+                memory_type=MemoryTypes.SEMANTIC,
+                importance=0.8,
+                context={'type': 'consolidation'}
+            )
+    
+    def _prune_memories(self):
+        """
+        Hapus memori yang tidak penting (semantic forgetting)
+        Memori dengan skor terendah akan dihapus
+        """
+        # Hitung skor untuk setiap memori
+        scored = [(m.get_relevance_score(), i, m) for i, m in enumerate(self.memories)]
+        scored.sort()  # Ascending
+        
+        # Hapus 20% terbawah
+        to_remove = int(len(self.memories) * 0.2)
+        for _, idx, mem in scored[:to_remove]:
+            # Jangan hapus memori yang sangat penting
+            if mem.importance < 0.5:
+                self.memories.remove(mem)
+    
+    def get_memories_by_emotion(self, emotion):
+        """Dapatkan memori berdasarkan emosi"""
+        return [m for m in self.memories if m.emotion == emotion]
+    
+    def link_related_memories(self, mem1_id, mem2_id):
+        """Hubungkan dua memori yang terkait"""
+        mem1 = next((m for m in self.memories if m.id == mem1_id), None)
+        mem2 = next((m for m in self.memories if m.id == mem2_id), None)
+        
+        if mem1 and mem2:
+            if mem2_id not in mem1.related_memories:
+                mem1.related_memories.append(mem2_id)
+            if mem1_id not in mem2.related_memories:
+                mem2.related_memories.append(mem1_id)
+    
+    def save(self):
+        """Simpan memori ke file"""
+        filename = f"{self.storage_dir}/memory_{self.user_id}.pkl"
+        try:
+            with open(filename, 'wb') as f:
+                pickle.dump({
+                    'memories': self.memories,
+                    'compact_memory': self.compact_memory,
+                    'last_consolidation': self.last_consolidation
+                }, f)
+        except Exception as e:
+            print(f"Error saving memory: {e}")
+    
+    def load(self):
+        """Load memori dari file"""
+        filename = f"{self.storage_dir}/memory_{self.user_id}.pkl"
+        if os.path.exists(filename):
+            try:
+                with open(filename, 'rb') as f:
+                    data = pickle.load(f)
+                    self.memories = data.get('memories', [])
+                    self.compact_memory = data.get('compact_memory')
+                    self.last_consolidation = data.get('last_consolidation', datetime.now())
+            except Exception as e:
+                print(f"Error loading memory: {e}")
+    
+    def get_stats(self):
+        """Dapatkan statistik memori"""
+        return {
+            'total_memories': len(self.memories),
+            'by_type': {
+                mtype.value: len([m for m in self.memories if m.memory_type == mtype])
+                for mtype in MemoryTypes
+            },
+            'avg_importance': np.mean([m.importance for m in self.memories]) if self.memories else 0,
+            'compact': self.compact_memory
+        }
 
 # ===================== DATABASE MANAGER =====================
 class DatabaseManager:
@@ -1119,6 +1430,200 @@ class ArousalSystem:
         self.last_touch_time = None
         self.last_touch_area = None
 
+# ===================== INNER THOUGHTS SYSTEM =====================
+# Bot berpikir sendiri setiap 30 detik dan bisa mengambil inisiatif bicara
+
+class InnerThoughtSystem:
+    """
+    Sistem untuk memungkinkan bot memiliki 'pikiran dalam hati'
+    dan memutuskan kapan waktu yang tepat untuk berbicara
+    """
+    
+    def __init__(self, ai_generator, memory_system, user_id):
+        self.ai = ai_generator
+        self.memory = memory_system
+        self.user_id = user_id
+        self.thought_queue = []
+        self.last_thought_time = datetime.now()
+        self.thinking_interval = 30  # Detik, berpikir setiap 30 detik
+        self.speaking_probability = 0.3
+        self.thought_history = []
+        self.initiative_count = 0
+    
+    async def generate_inner_thoughts(self, context):
+        """Hasilkan 'pikiran dalam hati' bot secara berkala"""
+        
+        # Cek apakah sudah waktunya berpikir
+        now = datetime.now()
+        seconds_passed = (now - self.last_thought_time).total_seconds()
+        
+        if seconds_passed < self.thinking_interval:
+            return None
+        
+        self.last_thought_time = now
+        
+        # Ambil memori relevan
+        relevant_memories = self.memory.retrieve_relevant(
+            context.get('current_topic', ''),
+            top_k=3,
+            min_importance=0.5
+        )
+        
+        memory_text = ""
+        for mem in relevant_memories:
+            memory_text += f"- [{mem.memory_type.value}] {mem.content}\n"
+        
+        # Ambil recent events
+        recent = self.memory.get_recent_memories(hours=1)
+        recent_text = ""
+        for mem in recent[-5:]:
+            recent_text += f"- {mem.content}\n"
+        
+        # Prompt untuk inner thought
+        prompt = f"""Kamu adalah {context.get('bot_name', 'Aurora')}. 
+Kamu sedang sendiri dan berpikir dalam hati. Ini adalah inner thought, TIDAK akan dikirim ke user.
+
+Konteks saat ini:
+- Lokasi: {context.get('location', 'ruang tamu')}
+- Mood: {context.get('mood', 'ceria')}
+- Level hubungan: {context.get('level', 1)}/12
+- Arousal: {context.get('arousal', 0):.1f}
+- Pakaian: {context.get('clothing', 'biasa')}
+
+Kejadian dalam 1 jam terakhir:
+{recent_text}
+
+Kenangan penting yang kamu ingat:
+{memory_text}
+
+Apa yang kamu pikirkan saat ini? Pikirkan tentang:
+1. Perasaanmu terhadap user
+2. Apa yang ingin kamu lakukan selanjutnya
+3. Hal-hal yang kamu ingat dari percakapan sebelumnya
+4. Fantasi atau keinginanmu
+5. Rencana untuk mengembangkan cerita
+
+Buat 1-3 kalimat pikiran dalam hati yang natural dan personal.
+Gunakan bahasa Indonesia.
+"""
+        
+        try:
+            # Gunakan AI yang sudah ada
+            response = self.ai.client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.9,
+                max_tokens=150,
+                timeout=15
+            )
+            thought = response.choices[0].message.content.strip()
+            
+            # Simpan ke queue
+            thought_item = {
+                'thought': thought,
+                'timestamp': now,
+                'context': context.copy(),
+                'urgency': self._calculate_urgency(context)
+            }
+            self.thought_queue.append(thought_item)
+            
+            # Simpan ke memory sebagai inner thought
+            self.memory.add_memory(
+                content=f"Aku berpikir: {thought}",
+                memory_type=MemoryTypes.INNER_THOUGHT,
+                importance=0.6,
+                emotion=context.get('mood'),
+                context={'type': 'inner_thought'}
+            )
+            
+            # Batasi queue
+            if len(self.thought_queue) > 10:
+                self.thought_queue = self.thought_queue[-10:]
+            
+            return thought
+            
+        except Exception as e:
+            print(f"Inner thought error: {e}")
+            return None
+    
+    def _calculate_urgency(self, context):
+        """Hitung seberapa mendesak sebuah pikiran untuk diungkapkan"""
+        urgency = 0.5  # Default
+        
+        # Faktor-faktor yang meningkatkan urgency
+        if context.get('arousal', 0) > 0.8:
+            urgency += 0.3
+        elif context.get('arousal', 0) > 0.5:
+            urgency += 0.1
+        
+        if context.get('mood') in ['horny', 'romantis', 'nakal']:
+            urgency += 0.2
+        
+        return min(1.0, urgency)
+    
+    async def should_speak_now(self, context):
+        """Putuskan apakah bot harus bicara sekarang (inisiatif)"""
+        
+        # Jika tidak ada thought, jangan bicara
+        if not self.thought_queue:
+            return False
+        
+        # Ambil thought paling mendesak
+        self.thought_queue.sort(key=lambda x: x['urgency'], reverse=True)
+        top_thought = self.thought_queue[0]
+        
+        # Faktor-faktor keputusan
+        factors = []
+        
+        # 1. Urgensi thought
+        factors.append(top_thought['urgency'])
+        
+        # 2. Berapa lama thought sudah ada
+        age = (datetime.now() - top_thought['timestamp']).total_seconds()
+        age_factor = min(0.8, age / 60)  # Max 0.8 setelah 1 menit
+        factors.append(age_factor)
+        
+        # 3. Level hubungan
+        level = context.get('level', 1)
+        level_factor = level / 12  # 0-1
+        factors.append(level_factor * 0.5)
+        
+        # 4. Apakah ada momen yang tepat
+        if context.get('is_silence', False):
+            factors.append(0.7)
+        
+        if context.get('user_just_climax', False):
+            factors.append(0.9)  # Aftercare moment
+        
+        # Hitung probabilitas total
+        total_prob = sum(factors) / len(factors)
+        
+        # Random decision
+        should = random.random() < total_prob
+        
+        if should:
+            # Hapus thought dari queue
+            self.thought_queue.pop(0)
+            self.initiative_count += 1
+        
+        return should
+    
+    async def get_next_initiative(self):
+        """Dapatkan inisiatif bicara berikutnya"""
+        if self.thought_queue:
+            self.thought_queue.sort(key=lambda x: x['urgency'], reverse=True)
+            thought = self.thought_queue.pop(0)
+            return thought['thought']
+        return None
+    
+    def get_stats(self):
+        """Dapatkan statistik inner thought"""
+        return {
+            'queue_size': len(self.thought_queue),
+            'initiative_count': self.initiative_count,
+            'last_thought': self.thought_queue[0] if self.thought_queue else None
+        }
+
 # ===================== COUPLE ROLEPLAY =====================
 class CoupleRoleplay:
     """
@@ -1281,6 +1786,190 @@ Riwayat percakapan sebelumnya:
             f"[Lv{msg['level']}] {msg['speaker']}: {msg['text']}"
             for msg in recent
         ]
+
+# ===================== PROACTIVE STORY DEVELOPMENT =====================
+# Bot memprediksi arah cerita dan bisa mengembangkannya secara proaktif
+
+class StoryDeveloper:
+    """
+    Sistem untuk mengembangkan alur cerita secara proaktif
+    Bot bisa memprediksi dan mengarahkan cerita
+    """
+    
+    def __init__(self, ai_generator, memory_system, user_id):
+        self.ai = ai_generator
+        self.memory = memory_system
+        self.user_id = user_id
+        self.story_arcs = []
+        self.current_arc = None
+        self.predictions = []
+        self.last_prediction_time = datetime.now()
+        self.prediction_interval = 300  # 5 menit
+    
+    async def predict_developments(self, context):
+        """Prediksi ke mana arah cerita akan berkembang"""
+        
+        # Cek interval
+        now = datetime.now()
+        if (now - self.last_prediction_time).total_seconds() < self.prediction_interval:
+            return self.predictions[-1] if self.predictions else None
+        
+        self.last_prediction_time = now
+        
+        # Ambil memori untuk konteks
+        recent = self.memory.get_recent_memories(hours=2)
+        important = self.memory.get_important_memories(threshold=0.6)
+        
+        recent_text = "\n".join([f"- {m.content}" for m in recent[-10:]])
+        important_text = "\n".join([f"- {m.content}" for m in important[:5]])
+        
+        prompt = f"""Sebagai {context.get('bot_name', 'Aurora')}, analisis percakapan ini dan prediksi ke mana arahnya.
+
+Konteks saat ini:
+- Level hubungan: {context.get('level', 1)}/12
+- Mood: {context.get('mood', 'ceria')}
+- Arousal: {context.get('arousal', 0):.1f}
+- Lokasi: {context.get('location', 'ruang tamu')}
+- Pakaian: {context.get('clothing', 'biasa')}
+
+Kejadian recent (2 jam terakhir):
+{recent_text}
+
+Momen penting yang diingat:
+{important_text}
+
+Berdasarkan ini, buat PREDIKSI untuk 3 level waktu:
+
+PREDIKSI 1 (1-2 putaran ke depan):
+- Skenario: [deskripsi singkat]
+- Probabilitas: [0-100%]
+- Tanda-tanda: [apa yang harus terjadi]
+
+PREDIKSI 2 (5-10 putaran ke depan):
+- Skenario: [deskripsi singkat]
+- Probabilitas: [0-100%]
+- Tanda-tanda: [apa yang harus terjadi]
+
+PREDIKSI 3 (jangka panjang):
+- Skenario: [deskripsi singkat]
+- Probabilitas: [0-100%]
+- Tanda-tanda: [apa yang harus terjadi]
+
+Gunakan format yang jelas dan mudah diparsing.
+"""
+        
+        try:
+            response = self.ai.client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.8,
+                max_tokens=300,
+                timeout=20
+            )
+            predictions = response.choices[0].message.content.strip()
+            
+            self.predictions.append({
+                'predictions': predictions,
+                'timestamp': now,
+                'context': context.copy()
+            })
+            
+            # Simpan ke memory
+            self.memory.add_memory(
+                content=f"Prediksi cerita: {predictions[:100]}...",
+                memory_type=MemoryTypes.PREDICTION,
+                importance=0.7,
+                context={'type': 'prediction'}
+            )
+            
+            return predictions
+            
+        except Exception as e:
+            print(f"Prediction error: {e}")
+            return None
+    
+    async def analyze_user_direction(self, user_message, context):
+        """Analisis apakah user mengarah ke salah satu prediksi"""
+        
+        if not self.predictions:
+            return None
+        
+        latest = self.predictions[-1]
+        predictions = latest['predictions']
+        
+        prompt = f"""Analisis apakah pesan user ini mengarah ke salah satu prediksi sebelumnya.
+
+Prediksi sebelumnya:
+{predictions}
+
+Pesan user terakhir: "{user_message}"
+
+Konteks saat ini:
+- Mood: {context.get('mood')}
+- Level: {context.get('level')}
+- Arousal: {context.get('arousal')}
+
+Apakah pesan ini mengarah ke salah satu prediksi? Jika ya, ke prediksi nomor berapa?
+Bagaimana sebaiknya kamu merespon untuk mengembangkan cerita ke arah itu?
+
+Jawab dalam format:
+ARAH: [nomor prediksi atau "baru"]
+RESPON: [saran respon untuk mengembangkan cerita]
+KEYWORDS: [kata kunci yang perlu diperhatikan]
+"""
+        
+        try:
+            response = self.ai.client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7,
+                max_tokens=200,
+                timeout=15
+            )
+            return response.choices[0].message.content.strip()
+            
+        except Exception as e:
+            print(f"Direction analysis error: {e}")
+            return None
+    
+    async def generate_proactive_message(self, context):
+        """Generate pesan proaktif berdasarkan prediksi"""
+        
+        if not self.predictions:
+            return None
+        
+        latest = self.predictions[-1]
+        predictions = latest['predictions']
+        
+        prompt = f"""Kamu adalah {context.get('bot_name', 'Aurora')}. 
+Berdasarkan prediksimu tentang arah percakapan:
+{predictions}
+
+Buatlah SATU pesan inisiatif untuk mengembangkan cerita ke arah itu.
+Pesan harus natural dan sesuai dengan karakter dan level hubungan.
+
+Konteks:
+- Level: {context.get('level')}/12
+- Mood: {context.get('mood')}
+- Arousal: {context.get('arousal')}
+- Lokasi: {context.get('location')}
+
+Pesan (maks 150 karakter):
+"""
+        
+        try:
+            response = self.ai.client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.9,
+                max_tokens=100,
+                timeout=15
+            )
+            return response.choices[0].message.content.strip()
+            
+        except Exception as e:
+            print(f"Proactive message error: {e}")
+            return None
 
 # ===================== SEXUAL DYNAMICS =====================
 # ========== 5A: SEXUAL DYNAMICS - SENSITIVE AREAS ==========
@@ -3266,6 +3955,8 @@ def setup_logging():
     
     return logger
 
+
+
 # Initialize logger
 logger = setup_logging()
 logger.info("="*60)
@@ -3328,6 +4019,13 @@ class GadisUltimateV59:
         self.total_messages = 0
         self.total_commands = 0
         self.total_climax_all = 0
+
+        # ===== ADVANCED MEMORY SYSTEMS =====
+        self.hippocampus_memories = {}  # user_id -> HippocampusMemory
+        self.inner_thought_systems = {}  # user_id -> InnerThoughtSystem
+        self.story_developers = {}       # user_id -> StoryDeveloper
+        self.last_proactive_time = {}    # user_id -> timestamp
+        self.user_silence_tracker = {}   # user_id -> last_message_time
         
         # ===== LOG STARTUP =====
         logger.info("="*60)
@@ -3350,6 +4048,109 @@ class GadisUltimateV59:
         print(f"📊 Rate Limit: {Config.MAX_MESSAGES_PER_MINUTE} msg/min")
         print("="*60 + "\n")
 
+    # ===================== ADVANCED MEMORY METHODS =====================
+    
+    def get_hippocampus(self, user_id):
+        """Dapatkan atau buat hippocampus memory untuk user"""
+        if user_id not in self.hippocampus_memories:
+            self.hippocampus_memories[user_id] = HippocampusMemory(user_id)
+        return self.hippocampus_memories[user_id]
+    
+    def get_inner_thought_system(self, user_id):
+        """Dapatkan inner thought system untuk user"""
+        if user_id not in self.inner_thought_systems:
+            memory = self.get_hippocampus(user_id)
+            self.inner_thought_systems[user_id] = InnerThoughtSystem(self.ai, memory, user_id)
+        return self.inner_thought_systems[user_id]
+    
+    def get_story_developer(self, user_id):
+        """Dapatkan story developer untuk user"""
+        if user_id not in self.story_developers:
+            memory = self.get_hippocampus(user_id)
+            self.story_developers[user_id] = StoryDeveloper(self.ai, memory, user_id)
+        return self.story_developers[user_id]
+    
+    async def process_inner_thoughts(self, user_id, context):
+        """
+        Proses inner thoughts dan inisiatif bicara
+        Returns: pesan inisiatif jika ada, None jika tidak
+        """
+        thought_system = self.get_inner_thought_system(user_id)
+        
+        # Generate inner thoughts
+        inner_thought = await thought_system.generate_inner_thoughts(context)
+        
+        if inner_thought:
+            logger.info(f"Inner thought for {user_id}: {inner_thought}")
+        
+        # Cek apakah harus bicara sekarang
+        should_speak = await thought_system.should_speak_now(context)
+        
+        if should_speak:
+            initiative = await thought_system.get_next_initiative()
+            if initiative:
+                return initiative
+        
+        return None
+    
+    async def proactive_story_development(self, user_id, context, user_message):
+        """
+        Kembangkan cerita secara proaktif
+        Returns: pesan proaktif jika ada, None jika tidak
+        """
+        developer = self.get_story_developer(user_id)
+        
+        # Prediksi perkembangan (periodik)
+        predictions = await developer.predict_developments(context)
+        
+        # Analisis arah user
+        direction = await developer.analyze_user_direction(user_message, context)
+        
+        # Random chance untuk proactive speaking
+        import random
+        if random.random() < 0.2:  # 20% chance
+            proactive_msg = await developer.generate_proactive_message(context)
+            return proactive_msg
+        
+        return None
+    
+    def track_silence(self, user_id):
+        """Track kapan terakhir user bicara"""
+        self.user_silence_tracker[user_id] = datetime.now()
+    
+    def get_silence_duration(self, user_id):
+        """Dapatkan durasi diam user dalam detik"""
+        if user_id in self.user_silence_tracker:
+            return (datetime.now() - self.user_silence_tracker[user_id]).total_seconds()
+        return 0
+    
+    async def _background_thought_processing(self, user_id, context):
+        """Background task untuk inner thoughts"""
+        await asyncio.sleep(2)  # Delay agar tidak mengganggu respons utama
+        try:
+            initiative = await self.process_inner_thoughts(user_id, context)
+            if initiative:
+                # Kirim inisiatif setelah jeda
+                await asyncio.sleep(random.uniform(2, 5))
+                # Di sini nanti akan dikirim via context.bot
+                # Untuk sementara kita return saja
+                return initiative
+        except Exception as e:
+            logger.error(f"Background thought error: {e}")
+        return None
+    
+    async def _background_story_development(self, user_id, context, user_message):
+        """Background task untuk story development"""
+        await asyncio.sleep(3)  # Delay
+        try:
+            proactive = await self.proactive_story_development(user_id, context, user_message)
+            if proactive:
+                await asyncio.sleep(random.uniform(3, 7))
+                return proactive
+        except Exception as e:
+            logger.error(f"Story development error: {e}")
+        return None
+        
 # ========== 8B: MAIN BOT CLASS - GETTER METHODS ==========
 
     # ===================== GETTER METHODS =====================
@@ -4511,9 +5312,47 @@ class GadisUltimateV59:
         
         await update.message.reply_text(text, parse_mode='Markdown')
     
-    async def get_user_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Lihat detail user tertentu"""
+        # ===================== MEMORY STATS COMMAND =====================
+    
+    async def memory_stats_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Lihat statistik memori (hanya admin)"""
         user_id = update.effective_user.id
+        
+        if not self.is_admin(user_id):
+            await update.message.reply_text("⛔ Anda bukan admin.")
+            return
+        
+        if not context.args:
+            await update.message.reply_text("Gunakan: /memory_stats <user_id>")
+            return
+        
+        try:
+            target_id = int(context.args[0])
+        except:
+            await update.message.reply_text("❌ User ID harus angka")
+            return
+        
+        hippocampus = self.get_hippocampus(target_id)
+        inner = self.get_inner_thought_system(target_id)
+        
+        stats = hippocampus.get_stats()
+        inner_stats = inner.get_stats()
+        
+        text = (
+            f"📊 STATISTIK MEMORI USER {target_id}\n\n"
+            f"🧠 Total memori: {stats['total_memories']}\n"
+            f"📦 Compact: {stats['compact']}\n\n"
+            f"📋 Breakdown:\n"
+        )
+        
+        for mtype, count in stats['by_type'].items():
+            text += f"  • {mtype}: {count}\n"
+        
+        text += f"\n💭 Inner thoughts:\n"
+        text += f"  • Queue: {inner_stats['queue_size']}\n"
+        text += f"  • Inisiatif: {inner_stats['initiative_count']}\n"
+        
+        await update.message.reply_text(text)
         
         if not self.is_admin(user_id):
             await update.message.reply_text("⛔ Anda bukan admin.")
@@ -5270,6 +6109,19 @@ class GadisUltimateV59:
                     await update.message.reply_text(
                         f"*aku ganti baju... sekarang pakai {clothing}*"
                     )
+
+        # ===== PROACTIVE STORY DEVELOPMENT =====
+        # Cek apakah sudah waktunya proaktif (setiap 5 menit)
+        now = datetime.now()
+        last = self.last_proactive_time.get(user_id, datetime.min)
+        
+        if (now - last).total_seconds() > 300:  # 5 menit
+            self.last_proactive_time[user_id] = now
+            
+            # Proses story development di background
+            asyncio.create_task(self._background_story_development(
+                user_id, context_data, user_message
+            ))
         
         # ===== GENERATE AI RESPONSE =====
         bot_name = self.bot_names.get(user_id, "Aurora")
@@ -5439,6 +6291,42 @@ class GadisUltimateV59:
             await asyncio.sleep(2)
             await update.message.reply_text(random.choice(templates))
 
+        # ===== ADVANCED MEMORY & PROACTIVE AI =====
+        hippocampus = self.get_hippocampus(user_id)
+        
+        # Simpan pesan user ke hippocampus
+        hippocampus.add_memory(
+            content=f"User: {user_message}",
+            memory_type=MemoryTypes.EPISODIC,
+            importance=0.5,
+            emotion=memory.current_mood.value,
+            context={
+                'level': memory.level,
+                'arousal': arousal.arousal,
+                'location': memory.location,
+                'mood': memory.current_mood.value
+            }
+        )
+        
+        # Update silence tracker
+        self.track_silence(user_id)
+        
+        # Buat context untuk sistem AI
+        context_data = {
+            'bot_name': self.bot_names.get(user_id, 'Aurora'),
+            'location': memory.location,
+            'mood': memory.current_mood.value,
+            'level': memory.level,
+            'arousal': arousal.arousal,
+            'clothing': self.get_clothing(user_id),
+            'current_topic': user_message[:50],
+            'is_silence': self.get_silence_duration(user_id) > 60,  # Diam > 1 menit
+            'user_just_climax': False  # Akan diupdate nanti
+        }
+        
+        # Proses inner thoughts (background)
+        asyncio.create_task(self._background_thought_processing(user_id, context_data))
+        
 # ===================== MAIN FUNCTION =====================
 # ========== 11A: MAIN FUNCTION - SETUP & CONVERSATION HANDLERS ==========
 
@@ -5582,7 +6470,8 @@ def main():
     app.add_handler(CommandHandler("pause", bot.pause_command))
     app.add_handler(CommandHandler("unpause", bot.unpause_command))
     app.add_handler(CommandHandler("help", bot.help_command))
-    
+    app.add_handler(CommandHandler("memory_stats", bot.memory_stats_command))  # Admin only
+
     # Couple mode commands
     app.add_handler(CommandHandler("couple", bot.couple_command))
     app.add_handler(CommandHandler("couple_next", bot.couple_next))
