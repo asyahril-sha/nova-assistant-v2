@@ -6902,8 +6902,185 @@ print("="*70)
     async def role_pdkt_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await self.role_callback(update, context)
 
-# ===================== BAB 9.2: Status & Dominance Commands =====================
+# ===================== BAB 9: MAIN BOT CLASS - COMMANDS =====================
+# Bagian 9.1: Start & Role Selection
+# Bagian 9.2: Status & Dominance Commands
+# Bagian 9.3: Session Control Commands
 
+    # ===== START COMMAND =====
+    
+    async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Memulai hubungan baru dengan bot"""
+        user_id = update.effective_user.id
+        username = update.effective_user.username or update.effective_user.first_name
+        
+        self.log_command('start', user_id, username)
+        
+        # Cek apakah sudah ada sesi aktif
+        if user_id in self.sessions:
+            await update.message.reply_text(
+                "Kamu sudah memiliki sesi aktif. Ketik /close untuk menutup sesi atau /pause untuk jeda."
+            )
+            return ConversationHandler.END
+        
+        # Cek apakah ada sesi di-pause
+        if user_id in self.paused_sessions:
+            keyboard = [
+                [InlineKeyboardButton("✅ Lanjutkan", callback_data="unpause")],
+                [InlineKeyboardButton("🆕 Mulai Baru", callback_data="new")],
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await update.message.reply_text(
+                "⚠️ Ada sesi yang di-pause. Pilih:", 
+                reply_markup=reply_markup
+            )
+            return Constants.SELECTING_ROLE
+        
+        # Tampilkan disclaimer 18+
+        disclaimer = self.get_disclaimer()
+        keyboard = [[InlineKeyboardButton("✅ Saya setuju (18+)", callback_data="agree_18")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(
+            disclaimer, 
+            reply_markup=reply_markup,
+            parse_mode='Markdown'
+        )
+        return Constants.SELECTING_ROLE
+    
+    async def agree_18_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Callback setelah user setuju disclaimer"""
+        query = update.callback_query
+        await query.answer()
+        
+        user_id = query.from_user.id
+        logger.debug(f"User {user_id} agreed to 18+ disclaimer")
+        
+        # Tampilkan pilihan role dengan deskripsi
+        keyboard = [
+            [InlineKeyboardButton("👨‍👩‍👧‍👦 Ipar", callback_data="role_ipar")],
+            [InlineKeyboardButton("💼 Teman Kantor", callback_data="role_teman_kantor")],
+            [InlineKeyboardButton("💃 Janda", callback_data="role_janda")],
+            [InlineKeyboardButton("🦹 Pelakor", callback_data="role_pelakor")],
+            [InlineKeyboardButton("💍 Istri Orang", callback_data="role_istri_orang")],
+            [InlineKeyboardButton("🌿 PDKT", callback_data="role_pdkt")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            "✨ **Pilih Role untukku**\n\n"
+            "Setiap role punya karakter dan gaya bicara berbeda:\n"
+            "• 👨‍👩‍👧‍👦 **Ipar** - Saudara ipar yang nakal\n"
+            "• 💼 **Teman Kantor** - Rekan kerja yang mesra\n"
+            "• 💃 **Janda** - Janda muda yang genit\n"
+            "• 🦹 **Pelakor** - Perebut laki orang\n"
+            "• 💍 **Istri Orang** - Istri orang lain\n"
+            "• 🌿 **PDKT** - Sedang pendekatan\n\n"
+            "Pilih salah satu:",
+            reply_markup=reply_markup
+        )
+        return Constants.SELECTING_ROLE
+    
+    async def role_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Callback setelah user memilih role"""
+        query = update.callback_query
+        await query.answer()
+        
+        user_id = query.from_user.id
+        role = query.data.replace("role_", "")
+        
+        # Pilih nama random sesuai role
+        name = random.choice(Constants.ROLE_NAMES.get(role, ["Aurora"]))
+        
+        # Generate atribut fisik
+        physical = PhysicalAttributesGenerator.generate(role)
+        
+        # Generate pakaian awal
+        initial_clothing = ClothingSystem.generate_clothing(role)
+        
+        # Buat session
+        success = self.create_session(user_id, name, role, physical, initial_clothing)
+        
+        if not success:
+            await query.edit_message_text("❌ Gagal membuat session. Coba lagi.")
+            return ConversationHandler.END
+        
+        # Intro dengan deskripsi fisik
+        intro = PhysicalAttributesGenerator.format_intro(name, role, physical)
+        
+        # Tambah info pakaian awal
+        intro += f"\n\n💃 *Hari ini aku pakai {initial_clothing}*"
+        
+        await query.edit_message_text(intro)
+        
+        logger.info(f"✨ New relationship: User {user_id} as {name} ({role})")
+        
+        return Constants.ACTIVE_SESSION
+    
+    async def start_pause_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Callback untuk memilih lanjutkan atau mulai baru saat ada session pause"""
+        query = update.callback_query
+        await query.answer()
+        user_id = query.from_user.id
+        
+        if query.data == "unpause":
+            # Lanjutkan session yang di-pause
+            if self.unpause_session(user_id):
+                session = self.get_session(user_id)
+                clothing = session.bot_clothing if session else "pakaian biasa"
+                
+                await query.edit_message_text(
+                    f"▶️ **Sesi dilanjutkan!**\n\n"
+                    f"Aku masih pakai *{clothing}*\n\n"
+                    f"Kangen... 💕"
+                )
+                return Constants.ACTIVE_SESSION
+            else:
+                await query.edit_message_text(
+                    "⏰ **Sesi expired karena terlalu lama di-pause**\n"
+                    "Ketik /start untuk memulai baru."
+                )
+                return ConversationHandler.END
+                
+        elif query.data == "new":
+            # Mulai baru - hapus session pause
+            if user_id in self.paused_sessions:
+                del self.paused_sessions[user_id]
+            
+            # Tampilkan disclaimer
+            disclaimer = self.get_disclaimer()
+            keyboard = [[InlineKeyboardButton("✅ Saya setuju (18+)", callback_data="agree_18")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text(
+                disclaimer, 
+                reply_markup=reply_markup,
+                parse_mode='Markdown'
+            )
+            return Constants.SELECTING_ROLE
+        
+        return ConversationHandler.END
+    
+    # Role-specific callbacks (untuk konsistensi)
+    async def role_ipar_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        return await self.role_callback(update, context)
+    
+    async def role_teman_kantor_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        return await self.role_callback(update, context)
+    
+    async def role_janda_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        return await self.role_callback(update, context)
+    
+    async def role_pelakor_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        return await self.role_callback(update, context)
+    
+    async def role_istri_orang_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        return await self.role_callback(update, context)
+    
+    async def role_pdkt_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        return await self.role_callback(update, context)
+
+    # ===== STATUS COMMAND =====
+    
     async def status_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Lihat status lengkap hubungan saat ini"""
         user_id = update.effective_user.id
@@ -6975,6 +7152,8 @@ print("="*70)
         
         await update.message.reply_text(status, parse_mode='Markdown')
     
+    # ===== DOMINANT COMMAND =====
+    
     async def dominant_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Set mode dominan manual"""
         user_id = update.effective_user.id
@@ -7034,9 +7213,9 @@ print("="*70)
             await update.message.reply_text(
                 "❌ Level tidak valid. Gunakan: normal, dominan, sangat dominan, agresif, atau patuh"
             )
-
-# ===================== BAB 9.3: Session Control Commands =====================
-
+    
+    # ===== PAUSE COMMAND =====
+    
     async def pause_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Pause sesi sementara"""
         user_id = update.effective_user.id
@@ -7059,6 +7238,8 @@ print("="*70)
         else:
             await update.message.reply_text("❌ Gagal mem-pause sesi.")
     
+    # ===== UNPAUSE COMMAND =====
+    
     async def unpause_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Lanjutkan sesi yang di-pause"""
         user_id = update.effective_user.id
@@ -7079,6 +7260,8 @@ print("="*70)
             await update.message.reply_text(
                 "❌ Tidak ada sesi di-pause atau sesi sudah expired."
             )
+    
+    # ===== CLOSE COMMAND =====
     
     async def close_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Menutup sesi tapi menyimpan memori di database"""
@@ -7148,6 +7331,8 @@ print("="*70)
         
         logger.info(f"User {user_id} closed session (level {level})")
         return ConversationHandler.END
+    
+    # ===== END COMMAND =====
     
     async def end_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Mengakhiri hubungan dan menghapus semua data (hard reset)"""
@@ -7235,6 +7420,8 @@ print("="*70)
         logger.info(f"User {user_id} ended relationship - Level {stats['level']}")
         return ConversationHandler.END
     
+    # ===== CANCEL COMMAND =====
+    
     async def cancel_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Membatalkan percakapan (untuk ConversationHandler)"""
         user_id = update.effective_user.id
@@ -7246,6 +7433,8 @@ print("="*70)
             "❌ Dibataikan. Ketik /start untuk memulai."
         )
         return ConversationHandler.END
+    
+    # ===== HELP COMMAND =====
     
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Menampilkan bantuan lengkap"""
