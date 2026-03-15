@@ -211,10 +211,11 @@ class ArousalState(Enum):
     VERY_HORNY = "sangat horny"
     CLIMAX = "klimaks"
 
-        def _init_db(self):
+    # ========== INIT DB ==========
+    def _init_db(self):
         """Inisialisasi tabel database dengan semua kolom yang diperlukan"""
         with self.cursor() as c:
-            # Tabel relationships dengan kolom untuk pakaian
+            # Tabel relationships dengan SEMUA kolom yang diperlukan
             c.execute("""
                 CREATE TABLE IF NOT EXISTS relationships (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -226,22 +227,26 @@ class ArousalState(Enum):
                     dominance TEXT DEFAULT 'normal',
                     total_messages INTEGER DEFAULT 0,
                     total_climax INTEGER DEFAULT 0,
-                    -- Atribut fisik
+                    
+                    -- Atribut fisik (untuk perkenalan diri)
                     hair_style TEXT,
                     height INTEGER,
                     weight INTEGER,
                     breast_size TEXT,
                     hijab BOOLEAN DEFAULT 0,
                     most_sensitive_area TEXT,
-                    -- Pakaian (dengan nama kolom yang konsisten)
+                    
+                    -- Pakaian (untuk fitur pakaian dinamis)
                     current_clothing TEXT,
-                    last_clothing_change TIMESTAMP,  -- ← PERBAIKAN: ganti dari clothing_last_changed
+                    last_clothing_change TIMESTAMP,
+                    
+                    -- Timestamps
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     last_active TIMESTAMP
                 )
             """)
             
-            # Tabel conversations
+            # Tabel conversations untuk menyimpan riwayat chat
             c.execute("""
                 CREATE TABLE IF NOT EXISTS conversations (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -251,11 +256,11 @@ class ArousalState(Enum):
                     mood TEXT,
                     arousal REAL,
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (relationship_id) REFERENCES relationships(id)
+                    FOREIGN KEY (relationship_id) REFERENCES relationships(id) ON DELETE CASCADE
                 )
             """)
             
-            # Tabel memories
+            # Tabel memories untuk menyimpan memori penting
             c.execute("""
                 CREATE TABLE IF NOT EXISTS memories (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -264,11 +269,11 @@ class ArousalState(Enum):
                     importance REAL,
                     emotion TEXT,
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (relationship_id) REFERENCES relationships(id)
+                    FOREIGN KEY (relationship_id) REFERENCES relationships(id) ON DELETE CASCADE
                 )
             """)
             
-            # Tabel preferences
+            # Tabel preferences untuk menyimpan preferensi user
             c.execute("""
                 CREATE TABLE IF NOT EXISTS preferences (
                     user_id INTEGER PRIMARY KEY,
@@ -281,8 +286,12 @@ class ArousalState(Enum):
                 )
             """)
             
-            print("✅ Tabel relationships berhasil dibuat/diverifikasi")
-
+            print("✅ Database initialized successfully")
+            print("   • Table 'relationships' created with all columns")
+            print("   • Table 'conversations' created")
+            print("   • Table 'memories' created")
+            print("   • Table 'preferences' created")
+            
     # ========== CONVERSATION METHODS ==========
     def save_conversation(self, rel_id, role, content, mood=None, arousal=None):
         with self.cursor() as c:
