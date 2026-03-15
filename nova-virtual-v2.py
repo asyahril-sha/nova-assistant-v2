@@ -4299,7 +4299,7 @@ class GadisUltimateV59:
 
     # ===================== ADMIN COMMANDS =====================
     
-    async def admin_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        async def admin_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Menu admin - menampilkan semua command admin"""
         user_id = update.effective_user.id
         username = update.effective_user.username or update.effective_user.first_name
@@ -4311,10 +4311,10 @@ class GadisUltimateV59:
             await update.message.reply_text("⛔ Anda bukan admin.")
             return
         
-        # Tampilkan menu admin
+        # Tampilkan menu admin - TANPA parse_mode Markdown
         text = (
-            "🔐 **MENU ADMIN**\n\n"
-            "**📋 Command Admin:**\n"
+            "🔐 MENU ADMIN\n\n"
+            "📋 Command Admin:\n"
             "/admin - Tampilkan menu ini\n"
             "/stats - Lihat statistik bot\n"
             "/broadcast <pesan> - Kirim pesan ke semua user aktif\n"
@@ -4323,14 +4323,15 @@ class GadisUltimateV59:
             "/list_users - Lihat daftar user aktif\n"
             "/get_user <user_id> - Lihat detail user\n"
             "/force_reset <user_id> - Reset paksa user\n\n"
-            "**📊 Status Bot:**\n"
+            "📊 Status Bot:\n"
             f"• Uptime: {self.get_uptime()}\n"
             f"• User aktif: {self.get_active_users_count()}\n"
             f"• Total user: {self.get_total_users_count()}\n"
-            f"• Total pesan: {self.total_messages}\n"
+            f"• Total pesan: {self.total_messages}"
         )
         
-        await update.message.reply_text(text, parse_mode='Markdown')
+        # HAPUS parse_mode='Markdown' - kirim sebagai teks biasa
+        await update.message.reply_text(text)
     
     async def stats_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Tampilkan statistik lengkap bot (untuk admin)"""
