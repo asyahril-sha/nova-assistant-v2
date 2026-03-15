@@ -3656,7 +3656,7 @@ class GadisUltimateV59:
             self.bot_physical[user_id] = physical
         
         # Load clothing
-        clothing = rel.get('clothing')
+        clothing = rel.get('current_clothing')  # ← harus 'current_clothing', bukan 'clothing'
         if clothing:
             self.bot_clothing[user_id] = clothing
             self.last_clothing_update[user_id] = datetime.now()
@@ -5305,7 +5305,7 @@ class GadisUltimateV59:
                 level=level, 
                 stage=stage.value,
                 total_messages=self.leveling.user_message_count.get(user_id, 0),
-                clothing=clothing
+                current_clothing=clothing
             )
         
         # Update preferences di database (periodik)
