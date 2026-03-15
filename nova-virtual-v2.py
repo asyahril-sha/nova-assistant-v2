@@ -229,65 +229,7 @@ class DatabaseManager:
                     total_interactions INTEGER DEFAULT 0
                 )
             """)
-    
-    # ========== RELATIONSHIP METHODS ==========
-    def create_relationship(self, user_id, bot_name, bot_role, physical_attrs=None, clothing=None):
-        """Buat hubungan baru dengan atribut fisik dan pakaian opsional"""
-        with self.cursor() as c:
-            if physical_attrs:
-                c.execute("""
-                    INSERT OR REPLACE INTO relationships 
-                    (user_id, bot_name, bot_role, last_active,
-                     hair_style, height, weight, breast_size, hijab, most_sensitive_area,
-                     current_clothing, clothing_last_changed)
-                    VALUES (?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                """, (user_id, bot_name, bot_role,
-                      physical_attrs.get('hair_style'),
-                      physical_attrs.get('height'),
-                      physical_attrs.get('weight'),
-                      physical_attrs.get('breast_size'),
-                      physical_attrs.get('hijab', 0),
-                      physical_attrs.get('most_sensitive_area'),
-                      clothing))
-            else:
-                c.execute("""
-                    INSERT OR REPLACE INTO relationships 
-                    (user_id, bot_name, bot_role, last_active, current_clothing, clothing_last_changed)
-                    VALUES (?, ?, ?, CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP)
-                """, (user_id, bot_name, bot_role, clothing))
-            return c.lastrowid
-    
-    def get_relationship(self, user_id):
-        with self.cursor() as c:
-            c.execute("SELECT * FROM relationships WHERE user_id=?", (user_id,))
-            row = c.fetchone()
-            return dict(row) if row else None
-    
-    def update_relationship(self, user_id, **kwargs):
-        fields = []
-        values = []
-        for key, value in kwargs.items():
-            fields.append(f"{key}=?")
-            values.append(value)
-        values.append(user_id)
-        with self.cursor() as c:
-            c.execute(f"""
-                UPDATE relationships
-                SET {', '.join(fields)}, last_active=CURRENT_TIMESTAMP
-                WHERE user_id=?
-            """, values)
-    
-    def delete_relationship(self, user_id):
-        with self.cursor() as c:
-            c.execute("SELECT id FROM relationships WHERE user_id=?", (user_id,))
-            row = c.fetchone()
-            if row:
-                rel_id = row[0]
-                c.execute("DELETE FROM conversations WHERE relationship_id=?", (rel_id,))
-                c.execute("DELETE FROM memories WHERE relationship_id=?", (rel_id,))
-            c.execute("DELETE FROM relationships WHERE user_id=?", (user_id,))
-            c.execute("DELETE FROM preferences WHERE user_id=?", (user_id,))
-    
+
     # ========== CONVERSATION METHODS ==========
     def save_conversation(self, rel_id, role, content, mood=None, arousal=None):
         with self.cursor() as c:
